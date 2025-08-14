@@ -1,0 +1,20 @@
+{
+  "name": "YourArtistName",
+  "bio": "これは編集テストです。電子音楽を中心に活動するアーティストです。既存楽曲のリミックスからオリジナル楽曲まで幅広く制作しています。80年代シンセウェイブから現代のエレクトロポップまで、多様なジャンルに挑戦しています。",
+  "genres": [
+    "Electronic Pop",
+    "Synthwave", 
+    "Ambient",
+    "Remix"
+  ],
+  "equipment": "DAW: FL Studio, Ableton Live / Synthesizer: Various VST plugins, Hardware synths",
+  "contact": {
+    "email": "contact@example.com",
+    "twitter": "https://twitter.com/example",
+    "soundcloud": "https://soundcloud.com/example",
+    "bandcamp": "",
+    "youtube": "",
+    "instagram": ""
+  },
+  "profileImage": ""
+}
