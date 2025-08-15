@@ -13,6 +13,8 @@ export default function Home() {
   const [windowHeight, setWindowHeight] = useState(0)
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null)
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null)
+  const [animatingTo, setAnimatingTo] = useState<string | null>(null)
+  const [backgroundSizes, setBackgroundSizes] = useState<Map<string, number>>(new Map())
 
   useEffect(() => {
     Promise.all([
@@ -123,43 +125,95 @@ export default function Home() {
     return 'brightness(1)'
   }
 
-  // 背景サイズ計算関数（再生中は拡大）
-  const calculateBackgroundSize = (song: Song): string => {
-    return currentlyPlaying === song.title ? '135%' : 'cover'
+  // 滑らかな背景サイズアニメーション関数
+  const animateBackgroundSize = (songTitle: string, targetSize: number, duration: number = 1200) => {
+    const startTime = Date.now()
+    const currentSize = backgroundSizes.get(songTitle) || 100
+    const sizeDifference = targetSize - currentSize
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      
+      // easeOutCubic - スクロールアニメーションと同じカーブ
+      const easedProgress = 1 - Math.pow(1 - progress, 3)
+      const currentAnimatedSize = currentSize + (sizeDifference * easedProgress)
+      
+      setBackgroundSizes(prev => new Map(prev).set(songTitle, currentAnimatedSize))
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate)
+      }
+    }
+    
+    requestAnimationFrame(animate)
   }
 
-  // 音楽再生機能
+  // 背景サイズ計算関数（アニメーション状態を反映）
+  const calculateBackgroundSize = (song: Song): string => {
+    const animatedSize = backgroundSizes.get(song.title) || 100
+    return `${animatedSize}%`
+  }
+
+  // 音楽再生機能（滑らかな背景アニメーション対応）
   const playAudio = (song: Song, index: number) => {
-    // 既存の音楽を停止
+    // 既存の音楽を停止（縮小アニメーション開始）
     if (audioRef) {
       audioRef.pause()
       audioRef.currentTime = 0
+      
+      // 既存楽曲の縮小アニメーション (100%に戻す)
+      if (currentlyPlaying) {
+        animateBackgroundSize(currentlyPlaying, 100, 800) // 少し早めの縮小
+      }
+      
+      setTimeout(() => {
+        setCurrentlyPlaying(null)
+        setAudioRef(null)
+      }, 100)
     }
 
     // 同じ楽曲の場合は停止
     if (currentlyPlaying === song.title) {
-      setCurrentlyPlaying(null)
-      setAudioRef(null)
+      // 縮小アニメーション (100%に戻す)
+      animateBackgroundSize(song.title, 100, 800)
+      
+      setTimeout(() => {
+        setCurrentlyPlaying(null)
+        setAudioRef(null)
+      }, 100)
       return
     }
 
-    // クリックしたレイヤーの位置まで自動スクロール（ゆっくりとしたアニメーション）
+    // クリックしたレイヤーの位置まで自動スクロール
     const targetScrollPosition = (index) * windowHeight
     smoothScrollTo(targetScrollPosition)
 
-    // 新しい音楽を再生
+    // 拡大アニメーション開始 (100% → 135%への滑らかな拡大)
+    animateBackgroundSize(song.title, 135, 1200)
+
+    // 音楽再生準備
     const audio = new Audio(song.audioPath)
-    audio.play().catch(error => {
-      console.error('音楽の再生に失敗しました:', error)
-    })
+    
+    // アニメーション開始と同時に音楽再生
+    setTimeout(() => {
+      audio.play().catch(error => {
+        console.error('音楽の再生に失敗しました:', error)
+        // エラー時は縮小
+        animateBackgroundSize(song.title, 100, 400)
+      })
+      setCurrentlyPlaying(song.title)
+      setAudioRef(audio)
+    }, 300) // 拡大アニメーション開始後少し遅らせて音楽再生
     
     audio.onended = () => {
-      setCurrentlyPlaying(null)
-      setAudioRef(null)
+      // 楽曲終了時の縮小アニメーション
+      animateBackgroundSize(song.title, 100, 800)
+      setTimeout(() => {
+        setCurrentlyPlaying(null)
+        setAudioRef(null)
+      }, 100)
     }
-    
-    setCurrentlyPlaying(song.title)
-    setAudioRef(audio)
   }
 
   if (loading) {
@@ -202,7 +256,7 @@ export default function Home() {
                 : `translateY(${Math.max(0, (scrollY - (index * windowHeight)) * 1)}px)`,
               zIndex: -(index + 1),
               filter: calculateLayerFilter(index, scrollY, windowHeight),
-              transition: 'filter 0.3s ease-out, background-size 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+              transition: 'filter 0.3s ease-out, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
             }}
           />
           
@@ -215,6 +269,7 @@ export default function Home() {
                 ? `translateY(${scrollY * 1}px)` 
                 : `translateY(${Math.max(0, (scrollY - (index * windowHeight)) * 1)}px)`,
               zIndex: 100 - index,
+              transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
               // backgroundColor: `hsl(${index * 360 / songs.length}, 70%, 50%, 0.3)`,
               // border: `4px solid hsl(${index * 360 / songs.length}, 70%, 40%)`
             }}
@@ -305,6 +360,7 @@ export default function Home() {
             className="h-screen flex items-center justify-center py-4 relative"
             style={{
               transform: `translateY(${Math.max(0, (scrollY - (songs.length * windowHeight)) * 0.5)}px)`,
+              transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
             }}
           >
             {profile && (
