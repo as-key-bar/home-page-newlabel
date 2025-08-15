@@ -255,7 +255,7 @@ export default function Home() {
                 ? `translateY(${scrollY * 1}px)` 
                 : `translateY(${Math.max(0, (scrollY - (index * windowHeight)) * 1)}px)`,
               zIndex: -(index + 1),
-              filter: calculateLayerFilter(index, scrollY, windowHeight),
+              filter: `${calculateLayerFilter(index, scrollY, windowHeight)} drop-shadow(0 10px 25px rgba(0, 0, 0, 1)) drop-shadow(0 4px 8px rgba(0, 0, 0, 1))`,
               transition: 'filter 0.3s ease-out, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
             }}
           />
