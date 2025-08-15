@@ -59,8 +59,72 @@ export default function Home() {
     }
   }, [])
 
+  // カスタムスムーススクロール関数（ゆっくりとした引っ張られるようなアニメーション）
+  const smoothScrollTo = (targetY: number) => {
+    const startY = window.scrollY
+    const distance = targetY - startY
+    const duration = 400 // 0.4秒間のアニメーション
+    let startTime: number | null = null
+
+    // easeOutCubic - ゆっくりと減速する動き
+    const easeOutCubic = (t: number): number => {
+      return 1 - Math.pow(1 - t, 3)
+    }
+
+    const animateScroll = (currentTime: number) => {
+      if (startTime === null) startTime = currentTime
+      const timeElapsed = currentTime - startTime
+      const progress = Math.min(timeElapsed / duration, 1)
+      
+      const easedProgress = easeOutCubic(progress)
+      const currentY = startY + (distance * easedProgress)
+      
+      window.scrollTo(0, currentY)
+      
+      if (progress < 1) {
+        requestAnimationFrame(animateScroll)
+      }
+    }
+
+    requestAnimationFrame(animateScroll)
+  }
+
+  // パララックスレイヤーの色合い計算関数
+  const calculateLayerFilter = (index: number, scrollY: number, windowHeight: number): string => {
+    const layerStartPosition = (index * windowHeight)
+    const layerEndPosition = layerStartPosition + windowHeight/4
+    // const halfScreenExitPosition = layerEndPosition + windowHeight * 0.5
+
+    // スクロール開始前（暗くする）
+    if (scrollY < layerStartPosition) {
+      const darknessFactor = Math.max(0, (layerStartPosition - scrollY) / windowHeight)
+      const brightness = Math.max(0.3, 1 - darknessFactor * 0.7) // 最低30%の明度
+      return `brightness(${brightness})`
+    }
+    
+    // スクロール開始中（通常の色合い）
+    if (scrollY >= layerStartPosition && scrollY <= layerEndPosition) {
+      return 'brightness(1)'
+    }
+    
+    // ブラウザ外に半分消えてから白っぽくする（半透明な白いレイヤー効果）
+    if (scrollY > layerEndPosition) {
+      const fadeDistance = scrollY - layerEndPosition
+      const maxFadeDistance = windowHeight * 0.5
+      const whitenessProgress = Math.min(1, fadeDistance / maxFadeDistance)
+      
+      // 白いレイヤーのオーバーレイ効果をCSSフィルターで再現
+      const whiteLayerOpacity = whitenessProgress * 1 // 最大60%の白いレイヤー
+      const saturateValue = Math.max(0.4, 1 - whitenessProgress * 0.6) // 彩度を下げる
+      
+      return `brightness(1.2) saturate(${saturateValue}) contrast(0.9) sepia(0.1) blur(0.3px))`
+    }
+
+    return 'brightness(1)'
+  }
+
   // 音楽再生機能
-  const playAudio = (song: Song) => {
+  const playAudio = (song: Song, index: number) => {
     // 既存の音楽を停止
     if (audioRef) {
       audioRef.pause()
@@ -73,6 +137,10 @@ export default function Home() {
       setAudioRef(null)
       return
     }
+
+    // クリックしたレイヤーの位置まで自動スクロール（ゆっくりとしたアニメーション）
+    const targetScrollPosition = (songs.length - index) * windowHeight
+    smoothScrollTo(targetScrollPosition)
 
     // 新しい音楽を再生
     const audio = new Audio(song.audioPath)
@@ -127,7 +195,9 @@ export default function Home() {
               transform: index === 0 
                 ? `translateY(${scrollY * 1}px)` 
                 : `translateY(${Math.max(0, (scrollY - (index * windowHeight)) * 1)}px)`,
-              zIndex: -(index + 1)
+              zIndex: -(index + 1),
+              filter: calculateLayerFilter(index, scrollY, windowHeight),
+              transition: 'filter 0.3s ease-out'
             }}
           />
           
@@ -146,7 +216,7 @@ export default function Home() {
             onClick={(e) => {
               console.log('パララックス背景がクリックされました:', song.title)
               e.preventDefault()
-              playAudio(song)
+              playAudio(song, index)
             }}
             title={`${song.title} - クリックで再生`}
           >
@@ -161,12 +231,6 @@ export default function Home() {
             </div>
           )}
           
-          {/* 楽曲情報オーバーレイ */}
-          <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm text-white p-4 rounded-lg max-w-sm">
-            <h3 className="text-lg font-semibold mb-1">{song.title}</h3>
-            <p className="text-sm opacity-90">{song.artist}</p>
-            <p className="text-xs opacity-70 mt-1">{song.genre}</p>
-          </div>
           </div>
         </React.Fragment>
       ))}
