@@ -61,6 +61,59 @@ export default function Home() {
     }
   }, [])
 
+  // 滑らかな背景サイズアニメーション関数
+  const animateBackgroundSize = (songTitle: string, targetSize: number, duration: number = 1200) => {
+    const startTime = Date.now()
+    const currentSize = backgroundSizes.get(songTitle) || 135
+    const sizeDifference = targetSize - currentSize
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      
+      // easeOutCubic - スクロールアニメーションと同じカーブ
+      const easedProgress = 1 - Math.pow(1 - progress, 3)
+      const currentAnimatedSize = currentSize + (sizeDifference * easedProgress)
+      
+      setBackgroundSizes(prev => new Map(prev).set(songTitle, currentAnimatedSize))
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate)
+      }
+    }
+    
+    requestAnimationFrame(animate)
+  }
+
+  // スペースキーによる再生停止のキーボードイベントリスナー
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // スペースキーが押されて、再生中の楽曲がある場合のみ停止
+      if (event.code === 'Space' && currentlyPlaying && audioRef) {
+        event.preventDefault() // ページスクロールを防止
+        
+        // 音楽停止
+        audioRef.pause()
+        audioRef.currentTime = 0
+        
+        // 拡大アニメーション
+        animateBackgroundSize(currentlyPlaying, 135, 800)
+        
+        // 状態リセット
+        setTimeout(() => {
+          setCurrentlyPlaying(null)
+          setAudioRef(null)
+        }, 100)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [currentlyPlaying, audioRef, backgroundSizes])
+
   // カスタムスムーススクロール関数（ゆっくりとした引っ張られるようなアニメーション）
   const smoothScrollTo = (targetY: number) => {
     const startY = window.scrollY
@@ -125,33 +178,9 @@ export default function Home() {
     return 'brightness(1)'
   }
 
-  // 滑らかな背景サイズアニメーション関数
-  const animateBackgroundSize = (songTitle: string, targetSize: number, duration: number = 1200) => {
-    const startTime = Date.now()
-    const currentSize = backgroundSizes.get(songTitle) || 100
-    const sizeDifference = targetSize - currentSize
-    
-    const animate = () => {
-      const elapsed = Date.now() - startTime
-      const progress = Math.min(elapsed / duration, 1)
-      
-      // easeOutCubic - スクロールアニメーションと同じカーブ
-      const easedProgress = 1 - Math.pow(1 - progress, 3)
-      const currentAnimatedSize = currentSize + (sizeDifference * easedProgress)
-      
-      setBackgroundSizes(prev => new Map(prev).set(songTitle, currentAnimatedSize))
-      
-      if (progress < 1) {
-        requestAnimationFrame(animate)
-      }
-    }
-    
-    requestAnimationFrame(animate)
-  }
-
   // 背景サイズ計算関数（アニメーション状態を反映）
   const calculateBackgroundSize = (song: Song): string => {
-    const animatedSize = backgroundSizes.get(song.title) || 100
+    const animatedSize = backgroundSizes.get(song.title) || 135
     return `${animatedSize}%`
   }
 
@@ -162,9 +191,9 @@ export default function Home() {
       audioRef.pause()
       audioRef.currentTime = 0
       
-      // 既存楽曲の縮小アニメーション (100%に戻す)
+      // 既存楽曲の拡大アニメーション (135%に戻す)
       if (currentlyPlaying) {
-        animateBackgroundSize(currentlyPlaying, 100, 800) // 少し早めの縮小
+        animateBackgroundSize(currentlyPlaying, 135, 800) // 少し早めの拡大
       }
       
       setTimeout(() => {
@@ -175,8 +204,8 @@ export default function Home() {
 
     // 同じ楽曲の場合は停止
     if (currentlyPlaying === song.title) {
-      // 縮小アニメーション (100%に戻す)
-      animateBackgroundSize(song.title, 100, 800)
+      // 拡大アニメーション (135%に戻す)
+      animateBackgroundSize(song.title, 135, 800)
       
       setTimeout(() => {
         setCurrentlyPlaying(null)
@@ -189,8 +218,8 @@ export default function Home() {
     const targetScrollPosition = (index) * windowHeight
     smoothScrollTo(targetScrollPosition)
 
-    // 拡大アニメーション開始 (100% → 135%への滑らかな拡大)
-    animateBackgroundSize(song.title, 135, 1200)
+    // 縮小アニメーション開始 (135% → 100%への滑らかな縮小)
+    animateBackgroundSize(song.title, 100, 1200)
 
     // 音楽再生準備
     const audio = new Audio(song.audioPath)
@@ -199,16 +228,16 @@ export default function Home() {
     setTimeout(() => {
       audio.play().catch(error => {
         console.error('音楽の再生に失敗しました:', error)
-        // エラー時は縮小
-        animateBackgroundSize(song.title, 100, 400)
+        // エラー時は拡大
+        animateBackgroundSize(song.title, 135, 400)
       })
       setCurrentlyPlaying(song.title)
       setAudioRef(audio)
     }, 300) // 拡大アニメーション開始後少し遅らせて音楽再生
     
     audio.onended = () => {
-      // 楽曲終了時の縮小アニメーション
-      animateBackgroundSize(song.title, 100, 800)
+      // 楽曲終了時の拡大アニメーション
+      animateBackgroundSize(song.title, 135, 800)
       setTimeout(() => {
         setCurrentlyPlaying(null)
         setAudioRef(null)
