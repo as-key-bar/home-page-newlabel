@@ -58,19 +58,33 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <header className="bg-white dark:bg-gray-800 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-6 flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Music Portfolio
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-start">
+          <div className="flex-1 flex flex-col items-center">
+            <div className="h-48 w-auto overflow-hidden flex items-center justify-center">
+              <img 
+                src="/images/newlabel_logo.png" 
+                alt="NewLabel Logo" 
+                className="h-96 w-auto object-cover"
+                style={{
+                  objectPosition: '50% 50%',
+                  clipPath: 'inset(30% 0 40% 0)'
+                }}
+              />
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 mt-1 text-center">
               音楽活動の作品をまとめたポートフォリオサイト
             </p>
           </div>
           <nav className="flex gap-4 mt-2">
             <a
+              href="/license"
+              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-8 py-4 text-xl font-medium transition-colors"
+            >
+              License
+            </a>
+            <a
               href="/contact"
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
+              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-8 py-4 text-xl font-medium transition-colors"
             >
               Contact
             </a>
