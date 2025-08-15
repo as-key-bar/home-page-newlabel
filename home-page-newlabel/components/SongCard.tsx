@@ -55,16 +55,14 @@ export default function SongCard({ song }: SongCardProps) {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
-  // 音源ファイルのパスを生成（titleベースでファイルを探す）
+  // 音源ファイルのパスを取得
   const getAudioPath = () => {
-    // とりあえず固定のパスを使用（後で動的に変更可能）
-    return '/audio/noiseOK_askey_Vocaloid_happy_ending_theme_4424_rec01_premaster01.wav'
+    return song.audioPath || '/audio/noiseOK_askey_Vocaloid_happy_ending_theme_4424_rec01_premaster01.wav'
   }
 
-  // ジャケット画像のパスを生成
+  // ジャケット画像のパスを取得
   const getCoverImagePath = () => {
-    // とりあえず最初の画像を固定で使用
-    return '/images/covers/42.jpg'
+    return song.coverImagePath || '/images/covers/42.jpg'
   }
   return (
     <div 
@@ -86,7 +84,7 @@ export default function SongCard({ song }: SongCardProps) {
           {song.title}
         </h3>
         <span className="text-sm text-gray-200">
-          {song.duration}
+          {formatTime(duration)}
         </span>
       </div>
       

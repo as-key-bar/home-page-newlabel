@@ -1,20 +1,20 @@
 {
-  "name": "YourArtistName",
-  "bio": "これは編集テストです。電子音楽を中心に活動するアーティストです。既存楽曲のリミックスからオリジナル楽曲まで幅広く制作しています。80年代シンセウェイブから現代のエレクトロポップまで、多様なジャンルに挑戦しています。",
+  "name": "askey",
+  "bio": "電子音楽を中心に、新しい音楽表現とポップの融合を探求しながら活動するアーティスト。東方Projectアレンジで150万再生を記録した「bouchonne」をリリースしたのち、Youtubeを中心に精力的に活動している。近年はVocaloid楽曲の制作やVtuberへの楽曲提供など活動の場を広げ、より一層「型にはまらないキャッチー」の可能性を追求している。",
   "genres": [
     "Electronic Pop",
-    "Synthwave", 
-    "Ambient",
+    "Electro Swing", 
+    "Drum and Bass",
+    "Chiptune",
     "Remix"
   ],
-  "equipment": "DAW: FL Studio, Ableton Live / Synthesizer: Various VST plugins, Hardware synths",
+  "equipment": "DAW: Cubase Movie Edit: After Effects",
   "contact": {
-    "email": "contact@example.com",
-    "twitter": "https://twitter.com/example",
-    "soundcloud": "https://soundcloud.com/example",
+    "email": "askeybar.official@gmail.com",
+    "twitter": "https://x.com/askey_Azukibar",
+    "soundcloud": "",
     "bandcamp": "",
-    "youtube": "",
     "instagram": ""
   },
-  "profileImage": ""
+  "profileImage": "/images/icon.jpg"
 }

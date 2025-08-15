@@ -1,7 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+
+interface Profile {
+  name: string
+  contact: {
+    email?: string
+    twitter?: string
+    soundcloud?: string
+    bandcamp?: string
+    youtube?: string
+    youtube_vocaloid?: string
+    instagram?: string
+  }
+}
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -13,6 +26,18 @@ export default function Contact() {
   
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState('')
+  const [profile, setProfile] = useState<Profile | null>(null)
+
+  useEffect(() => {
+    fetch('/api/profile')
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error) {
+          setProfile(data)
+        }
+      })
+      .catch(err => console.error('Profile fetch error:', err))
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -162,18 +187,62 @@ export default function Contact() {
               その他の連絡方法
             </h3>
             <div className="space-y-2 text-sm">
-              <p className="text-gray-600 dark:text-gray-400">
-                <strong>Email:</strong> 
-                <a href="mailto:contact@example.com" className="text-blue-600 dark:text-blue-400 hover:underline ml-2">
-                  contact@example.com
-                </a>
-              </p>
-              <p className="text-gray-600 dark:text-gray-400">
-                <strong>Twitter:</strong> 
-                <a href="https://twitter.com/example" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline ml-2">
-                  @example
-                </a>
-              </p>
+              {profile?.contact?.email && (
+                <p className="text-gray-600 dark:text-gray-400">
+                  <strong>Email:</strong> 
+                  <a href={`mailto:${profile.contact.email}`} className="text-blue-600 dark:text-blue-400 hover:underline ml-2">
+                    {profile.contact.email}
+                  </a>
+                </p>
+              )}
+              {profile?.contact?.twitter && (
+                <p className="text-gray-600 dark:text-gray-400">
+                  <strong>Twitter:</strong> 
+                  <a href={profile.contact.twitter} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline ml-2">
+                    {profile.contact.twitter.replace('https://twitter.com/', '@')}
+                  </a>
+                </p>
+              )}
+              {profile?.contact?.soundcloud && (
+                <p className="text-gray-600 dark:text-gray-400">
+                  <strong>SoundCloud:</strong> 
+                  <a href={profile.contact.soundcloud} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline ml-2">
+                    SoundCloud
+                  </a>
+                </p>
+              )}
+              {profile?.contact?.bandcamp && (
+                <p className="text-gray-600 dark:text-gray-400">
+                  <strong>Bandcamp:</strong> 
+                  <a href={profile.contact.bandcamp} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline ml-2">
+                    Bandcamp
+                  </a>
+                </p>
+              )}
+              {profile?.contact?.youtube && (
+                <p className="text-gray-600 dark:text-gray-400">
+                  <strong>YouTube (Instrumental):</strong> 
+                  <a href={profile.contact.youtube} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline ml-2">
+                    Bazaar Records
+                  </a>
+                </p>
+              )}
+              {profile?.contact?.youtube_vocaloid && (
+                <p className="text-gray-600 dark:text-gray-400">
+                  <strong>YouTube (Vocaloid):</strong> 
+                  <a href={profile.contact.youtube_vocaloid} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline ml-2">
+                    NewLabel Official
+                  </a>
+                </p>
+              )}
+              {profile?.contact?.instagram && (
+                <p className="text-gray-600 dark:text-gray-400">
+                  <strong>Instagram:</strong> 
+                  <a href={profile.contact.instagram} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline ml-2">
+                    Instagram
+                  </a>
+                </p>
+              )}
             </div>
           </div>
         </div>
