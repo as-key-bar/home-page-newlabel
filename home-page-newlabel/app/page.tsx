@@ -67,59 +67,23 @@ export default function Home() {
 
   return (
     <div className="relative">
-      {/* レイヤー1 - パララックス効果 */}
-      <div 
-        className="fixed inset-0 w-full h-full"
-        style={{
-          backgroundImage: 'url(/images/covers/42.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          transform: `translateY(${scrollY * 0.3}px)`,
-          zIndex: -1
-        }}
-      />
-
-      {/* レイヤー2 - パララックス効果（遅延スクロール） */}
-      <div 
-        className="fixed inset-0 w-full h-full"
-        style={{
-          backgroundImage: 'url(/images/covers/extra.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          transform: `translateY(${Math.max(0, (scrollY - 3000) * 0.3)}px)`,
-          zIndex: -2
-        }}
-      />
-
-
-      {/* レイヤー3 - パララックス効果（遅延スクロール） */}
-      <div 
-        className="fixed inset-0 w-full h-full"
-        style={{
-          backgroundImage: 'url(/images/covers/alien.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          transform: `translateY(${Math.max(0, (scrollY - 6000) * 0.3)}px)`,
-          zIndex: -3
-        }}
-      />
-
-      
-      {/* レイヤー4 - パララックス効果（遅延スクロール） */}
-      <div 
-        className="fixed inset-0 w-full h-full"
-        style={{
-          backgroundImage: 'url(/images/covers/new.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          transform: `translateY(${Math.max(0, (scrollY - 9000) * 0.3)}px)`,
-          zIndex: -4
-        }}
-      />
+      {/* パララックス背景レイヤー - songs.csvから動的生成 */}
+      {songs.map((song, index) => (
+        <div 
+          key={song.title}
+          className="fixed inset-0 w-full h-full"
+          style={{
+            backgroundImage: `url(${song.coverImagePath})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            transform: index === 0 
+              ? `translateY(${scrollY * 1}px)` 
+              : `translateY(${Math.max(0, (scrollY - (index * 3000)) * 1)}px)`,
+            zIndex: -(index + 1)
+          }}
+        />
+      ))}
 
 
       {/* ヘッダー */}
