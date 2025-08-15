@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Song } from './api/songs/route'
 import { Profile } from './api/profile/route'
 
@@ -11,6 +11,8 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [scrollY, setScrollY] = useState(0)
   const [windowHeight, setWindowHeight] = useState(0)
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null)
+  const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -57,6 +59,36 @@ export default function Home() {
     }
   }, [])
 
+  // 音楽再生機能
+  const playAudio = (song: Song) => {
+    // 既存の音楽を停止
+    if (audioRef) {
+      audioRef.pause()
+      audioRef.currentTime = 0
+    }
+
+    // 同じ楽曲の場合は停止
+    if (currentlyPlaying === song.title) {
+      setCurrentlyPlaying(null)
+      setAudioRef(null)
+      return
+    }
+
+    // 新しい音楽を再生
+    const audio = new Audio(song.audioPath)
+    audio.play().catch(error => {
+      console.error('音楽の再生に失敗しました:', error)
+    })
+    
+    audio.onended = () => {
+      setCurrentlyPlaying(null)
+      setAudioRef(null)
+    }
+    
+    setCurrentlyPlaying(song.title)
+    setAudioRef(audio)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -82,25 +114,66 @@ export default function Home() {
     <div className="relative">
       {/* パララックス背景レイヤー - songs.csvから動的生成 */}
       {songs.map((song, index) => (
-        <div 
-          key={song.title}
-          className="fixed inset-0 w-full h-full"
-          style={{
-            backgroundImage: `url(${song.coverImagePath})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            transform: index === 0 
-              ? `translateY(${scrollY * 1}px)` 
-              : `translateY(${Math.max(0, (scrollY - (index * windowHeight)) * 1)}px)`,
-            zIndex: -(index + 1)
-          }}
-        />
+        <React.Fragment key={`parallax-${song.title}-${index}`}>
+          {/* 背景画像レイヤー */}
+          <div 
+            key={`background-${song.title}-${index}`}
+            className="fixed inset-0 w-full h-full"
+            style={{
+              backgroundImage: `url(${song.coverImagePath})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              transform: index === 0 
+                ? `translateY(${scrollY * 1}px)` 
+                : `translateY(${Math.max(0, (scrollY - (index * windowHeight)) * 1)}px)`,
+              zIndex: -(index + 1)
+            }}
+          />
+          
+          {/* クリック可能な透明レイヤー */}
+          <div
+            key={`clickable-${song.title}`}
+            className="fixed inset-0 w-full h-full cursor-pointer transition-all duration-300"
+            style={{
+              transform: index === 0 
+                ? `translateY(${scrollY * 1}px)` 
+                : `translateY(${Math.max(0, (scrollY - ((songs.length - index) * windowHeight)) * 1)}px)`,
+              zIndex: 100 + index,
+              // backgroundColor: `hsl(${index * 360 / songs.length}, 70%, 50%, 0.3)`,
+              // border: `4px solid hsl(${index * 360 / songs.length}, 70%, 40%)`
+            }}
+            onClick={(e) => {
+              console.log('パララックス背景がクリックされました:', song.title)
+              e.preventDefault()
+              playAudio(song)
+            }}
+            title={`${song.title} - クリックで再生`}
+          >
+          {/* 再生中インジケーター */}
+          {currentlyPlaying === song.title && (
+            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg">
+              <div className="flex space-x-1">
+                <div className="w-1 h-6 bg-blue-500 rounded animate-pulse"></div>
+                <div className="w-1 h-6 bg-blue-500 rounded animate-pulse delay-100"></div>
+                <div className="w-1 h-6 bg-blue-500 rounded animate-pulse delay-200"></div>
+              </div>
+            </div>
+          )}
+          
+          {/* 楽曲情報オーバーレイ */}
+          <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm text-white p-4 rounded-lg max-w-sm">
+            <h3 className="text-lg font-semibold mb-1">{song.title}</h3>
+            <p className="text-sm opacity-90">{song.artist}</p>
+            <p className="text-xs opacity-70 mt-1">{song.genre}</p>
+          </div>
+          </div>
+        </React.Fragment>
       ))}
 
 
       {/* ヘッダー */}
-      <header className="relative z-10 bg-white shadow-sm">
+      <header className="relative z-20 bg-white shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-start">
           <div className="flex-1 flex flex-col items-center">
             <div className="h-48 w-auto overflow-hidden flex items-center justify-center">
