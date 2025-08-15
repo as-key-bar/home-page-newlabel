@@ -123,6 +123,11 @@ export default function Home() {
     return 'brightness(1)'
   }
 
+  // 背景サイズ計算関数（再生中は拡大）
+  const calculateBackgroundSize = (song: Song): string => {
+    return currentlyPlaying === song.title ? '135%' : 'cover'
+  }
+
   // 音楽再生機能
   const playAudio = (song: Song, index: number) => {
     // 既存の音楽を停止
@@ -139,7 +144,7 @@ export default function Home() {
     }
 
     // クリックしたレイヤーの位置まで自動スクロール（ゆっくりとしたアニメーション）
-    const targetScrollPosition = (songs.length - index) * windowHeight
+    const targetScrollPosition = (index) * windowHeight
     smoothScrollTo(targetScrollPosition)
 
     // 新しい音楽を再生
@@ -189,7 +194,7 @@ export default function Home() {
             className="fixed inset-0 w-full h-full"
             style={{
               backgroundImage: `url(${song.coverImagePath})`,
-              backgroundSize: 'cover',
+              backgroundSize: calculateBackgroundSize(song),
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
               transform: index === 0 
@@ -197,7 +202,7 @@ export default function Home() {
                 : `translateY(${Math.max(0, (scrollY - (index * windowHeight)) * 1)}px)`,
               zIndex: -(index + 1),
               filter: calculateLayerFilter(index, scrollY, windowHeight),
-              transition: 'filter 0.3s ease-out'
+              transition: 'filter 0.3s ease-out, background-size 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
             }}
           />
           
@@ -208,8 +213,8 @@ export default function Home() {
             style={{
               transform: index === 0 
                 ? `translateY(${scrollY * 1}px)` 
-                : `translateY(${Math.max(0, (scrollY - ((songs.length - index) * windowHeight)) * 1)}px)`,
-              zIndex: 100 + index,
+                : `translateY(${Math.max(0, (scrollY - (index * windowHeight)) * 1)}px)`,
+              zIndex: 100 - index,
               // backgroundColor: `hsl(${index * 360 / songs.length}, 70%, 50%, 0.3)`,
               // border: `4px solid hsl(${index * 360 / songs.length}, 70%, 40%)`
             }}
