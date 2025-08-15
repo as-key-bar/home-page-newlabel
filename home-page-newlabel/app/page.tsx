@@ -15,6 +15,8 @@ export default function Home() {
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null)
   const [animatingTo, setAnimatingTo] = useState<string | null>(null)
   const [backgroundSizes, setBackgroundSizes] = useState<Map<string, number>>(new Map())
+  const [playingDarkenedSongs, setPlayingDarkenedSongs] = useState<Set<string>>(new Set())
+  const [showingSongInfo, setShowingSongInfo] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -96,8 +98,16 @@ export default function Home() {
         audioRef.pause()
         audioRef.currentTime = 0
         
-        // 拡大アニメーション
+        // 拡大アニメーションと明るさ復帰
         animateBackgroundSize(currentlyPlaying, 135, 800)
+        // 暗くなった状態から明るさを復帰
+        setPlayingDarkenedSongs(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(currentlyPlaying)
+          return newSet
+        })
+        // 楽曲情報表示を隠す
+        setShowingSongInfo(null)
         
         // 状態リセット
         setTimeout(() => {
@@ -144,22 +154,27 @@ export default function Home() {
     requestAnimationFrame(animateScroll)
   }
 
-  // パララックスレイヤーの色合い計算関数
-  const calculateLayerFilter = (index: number, scrollY: number, windowHeight: number): string => {
+  // パララックスレイヤーの色合い計算関数（再生状態も考慮）
+  const calculateLayerFilter = (index: number, scrollY: number, windowHeight: number, song?: Song): string => {
     const layerStartPosition = (index * windowHeight)
     const layerEndPosition = layerStartPosition + windowHeight/4
-    // const halfScreenExitPosition = layerEndPosition + windowHeight * 0.5
-
+    
+    // 再生中で0.5秒後に暗くなった楽曲かどうかチェック
+    const isPlayingDarkened = song && playingDarkenedSongs.has(song.title)
+    
     // スクロール開始前（暗くする）
     if (scrollY < layerStartPosition) {
       const darknessFactor = Math.max(0, (layerStartPosition - scrollY) / windowHeight)
       const brightness = Math.max(0.3, 1 - darknessFactor * 0.7) // 最低30%の明度
-      return `brightness(${brightness})`
+      // 再生中の場合はさらに暗く
+      const playingDarkness = isPlayingDarkened ? 0.7 : 1
+      return `brightness(${brightness * playingDarkness})`
     }
     
-    // スクロール開始中（通常の色合い）
+    // スクロール開始中（通常の色合いまたは再生中の暗さ）
     if (scrollY >= layerStartPosition && scrollY <= layerEndPosition) {
-      return 'brightness(1)'
+      const playingDarkness = isPlayingDarkened ? 0.7 : 1
+      return `brightness(${playingDarkness})`
     }
     
     // ブラウザ外に半分消えてから白っぽくする（半透明な白いレイヤー効果）
@@ -171,11 +186,14 @@ export default function Home() {
       // 白いレイヤーのオーバーレイ効果をCSSフィルターで再現
       const whiteLayerOpacity = whitenessProgress * 1 // 最大60%の白いレイヤー
       const saturateValue = Math.max(0.4, 1 - whitenessProgress * 0.6) // 彩度を下げる
+      // 再生中の場合はベースの明度を下げる
+      const baseBrightness = isPlayingDarkened ? 0.84 : 1.2 // 1.2 * 0.7 = 0.84
       
-      return `brightness(1.2) saturate(${saturateValue}) contrast(0.9) sepia(0.1) blur(0.3px))`
+      return `brightness(${baseBrightness}) saturate(${saturateValue}) contrast(0.9) sepia(0.1) blur(0.3px))`
     }
 
-    return 'brightness(1)'
+    const playingDarkness = isPlayingDarkened ? 0.7 : 1
+    return `brightness(${playingDarkness})`
   }
 
   // 背景サイズ計算関数（アニメーション状態を反映）
@@ -191,9 +209,17 @@ export default function Home() {
       audioRef.pause()
       audioRef.currentTime = 0
       
-      // 既存楽曲の拡大アニメーション (135%に戻す)
+      // 既存楽曲の拡大アニメーションと明るさ復帰 (135%に戻す)
       if (currentlyPlaying) {
         animateBackgroundSize(currentlyPlaying, 135, 800) // 少し早めの拡大
+        // 暗くなった状態から明るさを復帰
+        setPlayingDarkenedSongs(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(currentlyPlaying)
+          return newSet
+        })
+        // 楽曲情報表示を隠す
+        setShowingSongInfo(null)
       }
       
       setTimeout(() => {
@@ -204,8 +230,16 @@ export default function Home() {
 
     // 同じ楽曲の場合は停止
     if (currentlyPlaying === song.title) {
-      // 拡大アニメーション (135%に戻す)
+      // 拡大アニメーションと明るさ復帰 (135%に戻す)
       animateBackgroundSize(song.title, 135, 800)
+      // 暗くなった状態から明るさを復帰
+      setPlayingDarkenedSongs(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(song.title)
+        return newSet
+      })
+      // 楽曲情報表示を隠す
+      setShowingSongInfo(null)
       
       setTimeout(() => {
         setCurrentlyPlaying(null)
@@ -233,11 +267,33 @@ export default function Home() {
       })
       setCurrentlyPlaying(song.title)
       setAudioRef(audio)
+      
+      // 1秒後に画像を暗くする
+      setTimeout(() => {
+        setPlayingDarkenedSongs(prev => {
+          const newSet = new Set(prev)
+          newSet.add(song.title)
+          return newSet
+        })
+      }, 1000)
+      
+      // 1.5秒後に楽曲情報を表示する
+      setTimeout(() => {
+        setShowingSongInfo(song.title)
+      }, 1500) 
     }, 300) // 拡大アニメーション開始後少し遅らせて音楽再生
     
     audio.onended = () => {
-      // 楽曲終了時の拡大アニメーション
+      // 楽曲終了時の拡大アニメーションと明るさ復帰
       animateBackgroundSize(song.title, 135, 800)
+      // 暗くなった状態から明るさを復帰
+      setPlayingDarkenedSongs(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(song.title)
+        return newSet
+      })
+      // 楽曲情報表示を隠す
+      setShowingSongInfo(null)
       setTimeout(() => {
         setCurrentlyPlaying(null)
         setAudioRef(null)
@@ -284,7 +340,7 @@ export default function Home() {
                 ? `translateY(${scrollY * 1}px)` 
                 : `translateY(${Math.max(0, (scrollY - (index * windowHeight)) * 1)}px)`,
               zIndex: -(index + 1),
-              filter: `${calculateLayerFilter(index, scrollY, windowHeight)} drop-shadow(0 10px 25px rgba(0, 0, 0, 1)) drop-shadow(0 4px 8px rgba(0, 0, 0, 1))`,
+              filter: `${calculateLayerFilter(index, scrollY, windowHeight, song)} drop-shadow(0 10px 25px rgba(0, 0, 0, 1)) drop-shadow(0 4px 8px rgba(0, 0, 0, 1))`,
               transition: 'filter 0.3s ease-out, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
             }}
           />
@@ -309,14 +365,36 @@ export default function Home() {
             }}
             title={`${song.title} - クリックで再生`}
           >
-          {/* 再生中インジケーター */}
-          {currentlyPlaying === song.title && (
-            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg">
-              <div className="flex space-x-1">
-                <div className="w-1 h-6 bg-blue-500 rounded animate-pulse"></div>
-                <div className="w-1 h-6 bg-blue-500 rounded animate-pulse delay-100"></div>
-                <div className="w-1 h-6 bg-blue-500 rounded animate-pulse delay-200"></div>
-              </div>
+
+          {/* 楽曲情報表示 (1.5秒後) */}
+          {showingSongInfo === song.title && (
+            <div 
+              className="absolute right-4 top-1/2 transform -translate-y-2 text-white bg-transparent text-right opacity-0 translate-x-5 animate-fade-in w-2/5 max-w-2/5 pr-2"
+              style={{
+                animation: 'fadeIn 1000ms ease-out forwards'
+              }}
+            >
+              <h3 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-bold mb-2 md:mb-4 drop-shadow-lg break-words leading-tight">
+                {song.title}
+              </h3>
+              <p className="text-lg sm:text-2xl md:text-3xl lg:text-5xl xl:text-7xl font-medium mb-2 md:mb-4 drop-shadow-md break-words leading-tight" style={{ opacity: 0.9 }}>
+                {song.artist}
+              </p>
+              <p className="text-sm sm:text-lg md:text-xl lg:text-2xl xl:text-4xl font-normal drop-shadow-md break-words leading-tight" style={{ opacity: 0.75 }}>
+                {song.album} • {song.genre}
+              </p>
+              <style jsx global>{`
+                @keyframes fadeIn {
+                  from {
+                    opacity: 0;
+                    transform: translateY(-50%) translateX(20px);
+                  }
+                  to {
+                    opacity: 1;
+                    transform: translateY(-50%) translateX(0);
+                  }
+                }
+              `}</style>
             </div>
           )}
           
