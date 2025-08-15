@@ -353,7 +353,9 @@ export default function Home() {
             style={{
               backgroundImage: `url(${song.coverImagePath})`,
               backgroundSize: calculateBackgroundSize(song),
-              backgroundPosition: 'center',
+              backgroundPosition: index === 0 
+                ? `center ${50 + (scrollY * 0.08)}%`
+                : `center ${50 + (Math.max(0, scrollY - (index * getResponsiveSpacerHeight())) * 0.05)}%`,
               backgroundRepeat: 'no-repeat',
               transform: index === 0 
                 ? `translateY(${scrollY * 1}px)` 
@@ -362,7 +364,39 @@ export default function Home() {
               filter: `${calculateLayerFilter(index, scrollY, windowHeight, song)} drop-shadow(0 10px 25px rgba(0, 0, 0, 1)) drop-shadow(0 4px 8px rgba(0, 0, 0, 1))`,
               transition: 'filter 0.3s ease-out, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
             }}
-          />
+          >
+            {/* 楽曲情報表示 (1.5秒後) - 背景画像レイヤー内に配置 */}
+            {showingSongInfo === song.title && (
+              <div 
+                className="absolute right-4 top-1/2 transform -translate-y-2 text-white bg-transparent text-right opacity-0 translate-x-5 animate-fade-in w-2/5 max-w-2/5 pr-2"
+                style={{
+                  animation: 'fadeIn 1000ms ease-out forwards'
+                }}
+              >
+                <h3 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-bold mb-2 md:mb-4 drop-shadow-lg break-words leading-tight">
+                  {song.title}
+                </h3>
+                <p className="text-lg sm:text-2xl md:text-3xl lg:text-5xl xl:text-7xl font-medium mb-2 md:mb-4 drop-shadow-md break-words leading-tight" style={{ opacity: 0.9 }}>
+                  {song.artist}
+                </p>
+                <p className="text-sm sm:text-lg md:text-xl lg:text-2xl xl:text-4xl font-normal drop-shadow-md break-words leading-tight" style={{ opacity: 0.75 }}>
+                  {song.album} • {song.genre}
+                </p>
+                <style jsx global>{`
+                  @keyframes fadeIn {
+                    from {
+                      opacity: 0;
+                      transform: translateY(-50%) translateX(20px);
+                    }
+                    to {
+                      opacity: 1;
+                      transform: translateY(-50%) translateX(0);
+                    }
+                  }
+                `}</style>
+              </div>
+            )}
+          </div>
           
           {/* クリック可能な透明レイヤー */}
           <div
@@ -390,7 +424,8 @@ export default function Home() {
             <div 
               className="absolute right-4 top-1/2 transform -translate-y-2 text-white bg-transparent text-right opacity-0 translate-x-5 animate-fade-in w-2/5 max-w-2/5 pr-2"
               style={{
-                animation: 'fadeIn 1000ms ease-out forwards'
+                animation: 'fadeIn 1000ms ease-out forwards',
+                zIndex: -(index + 2)  // 背景画像レイヤーより1つ下に配置
               }}
             >
               <h3 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-bold mb-2 md:mb-4 drop-shadow-lg break-words leading-tight">
