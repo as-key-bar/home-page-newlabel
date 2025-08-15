@@ -58,13 +58,23 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <header className="bg-white dark:bg-gray-800 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Music Portfolio
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            音楽活動の作品をまとめたポートフォリオサイト
-          </p>
+        <div className="max-w-4xl mx-auto px-4 py-6 flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Music Portfolio
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              音楽活動の作品をまとめたポートフォリオサイト
+            </p>
+          </div>
+          <nav className="flex gap-4 mt-2">
+            <a
+              href="/contact"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
+            >
+              Contact
+            </a>
+          </nav>
         </div>
       </header>
 
