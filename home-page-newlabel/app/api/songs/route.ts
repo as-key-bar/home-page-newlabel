@@ -9,12 +9,13 @@ export interface Song {
   album: string
   releaseDate: string
   genre: string
-  duration: string
   streamingUrl: string
   downloadUrl: string
   description: string
   tags: string
   originalTracks: string
+  audioPath: string
+  coverImagePath: string
 }
 
 export async function GET() {
