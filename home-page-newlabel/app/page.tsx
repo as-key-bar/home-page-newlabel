@@ -124,6 +124,23 @@ export default function Home() {
     }
   }, [currentlyPlaying, audioRef, backgroundSizes])
 
+  // レスポンシブ対応のスペーサー高さ計算関数
+  const getResponsiveSpacerHeight = () => {
+    if (windowHeight === 0) return windowHeight
+    const windowWidth = window.innerWidth
+    // モバイル: 70vh, タブレット: 75vh, デスクトップ: 100vh
+    if (windowWidth <= 768) return windowHeight * 0.7  // モバイル
+    if (windowWidth <= 1024) return windowHeight * 0.70 // タブレット（80vh→70vhに短縮）
+    return windowHeight  // デスクトップ
+  }
+
+  // プロフィールセクションの開始位置計算関数
+  const getProfileStartPosition = () => {
+    const spacerHeight = getResponsiveSpacerHeight()
+    const totalSpacers = songs.length // オフセットスペーサーも含む
+    return totalSpacers * spacerHeight
+  }
+
   // カスタムスムーススクロール関数（ゆっくりとした引っ張られるようなアニメーション）
   const smoothScrollTo = (targetY: number) => {
     const startY = window.scrollY
@@ -156,15 +173,16 @@ export default function Home() {
 
   // パララックスレイヤーの色合い計算関数（再生状態も考慮）
   const calculateLayerFilter = (index: number, scrollY: number, windowHeight: number, song?: Song): string => {
-    const layerStartPosition = (index * windowHeight)
-    const layerEndPosition = layerStartPosition + windowHeight/4
+    const spacerHeight = getResponsiveSpacerHeight()
+    const layerStartPosition = (index * spacerHeight)
+    const layerEndPosition = layerStartPosition + spacerHeight/4
     
     // 再生中で0.5秒後に暗くなった楽曲かどうかチェック
     const isPlayingDarkened = song && playingDarkenedSongs.has(song.title)
     
     // スクロール開始前（暗くする）
     if (scrollY < layerStartPosition) {
-      const darknessFactor = Math.max(0, (layerStartPosition - scrollY) / windowHeight)
+      const darknessFactor = Math.max(0, (layerStartPosition - scrollY) / spacerHeight)
       const brightness = Math.max(0.3, 1 - darknessFactor * 0.7) // 最低30%の明度
       // 再生中の場合はさらに暗く
       const playingDarkness = isPlayingDarkened ? 0.7 : 1
@@ -180,7 +198,7 @@ export default function Home() {
     // ブラウザ外に半分消えてから白っぽくする（半透明な白いレイヤー効果）
     if (scrollY > layerEndPosition) {
       const fadeDistance = scrollY - layerEndPosition
-      const maxFadeDistance = windowHeight * 0.5
+      const maxFadeDistance = spacerHeight * 0.5
       const whitenessProgress = Math.min(1, fadeDistance / maxFadeDistance)
       
       // 白いレイヤーのオーバーレイ効果をCSSフィルターで再現
@@ -249,7 +267,8 @@ export default function Home() {
     }
 
     // クリックしたレイヤーの位置まで自動スクロール
-    const targetScrollPosition = (index) * windowHeight
+    const spacerHeight = getResponsiveSpacerHeight()
+    const targetScrollPosition = (index) * spacerHeight
     smoothScrollTo(targetScrollPosition)
 
     // 縮小アニメーション開始 (135% → 100%への滑らかな縮小)
@@ -338,7 +357,7 @@ export default function Home() {
               backgroundRepeat: 'no-repeat',
               transform: index === 0 
                 ? `translateY(${scrollY * 1}px)` 
-                : `translateY(${Math.max(0, (scrollY - (index * windowHeight)) * 1)}px)`,
+                : `translateY(${Math.max(0, (scrollY - (index * getResponsiveSpacerHeight())) * 1)}px)`,
               zIndex: -(index + 1),
               filter: `${calculateLayerFilter(index, scrollY, windowHeight, song)} drop-shadow(0 10px 25px rgba(0, 0, 0, 1)) drop-shadow(0 4px 8px rgba(0, 0, 0, 1))`,
               transition: 'filter 0.3s ease-out, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
@@ -352,7 +371,7 @@ export default function Home() {
             style={{
               transform: index === 0 
                 ? `translateY(${scrollY * 1}px)` 
-                : `translateY(${Math.max(0, (scrollY - (index * windowHeight)) * 1)}px)`,
+                : `translateY(${Math.max(0, (scrollY - (index * getResponsiveSpacerHeight())) * 1)}px)`,
               zIndex: 100 - index,
               transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
               // backgroundColor: `hsl(${index * 360 / songs.length}, 70%, 50%, 0.3)`,
@@ -456,17 +475,17 @@ export default function Home() {
             </div>
           )}
           
-          {/* スクロール用のスペーサー - パララックスレイヤー数に合わせて動的生成 */}
+          {/* スクロール用のスペーサー - パララックスレイヤー数に合わせて動的生成（モバイル対応） */}
           {songs.slice(0, -1).map((_, index) => (
-            <div key={`spacer-${index}`} className="h-[100vh]"></div>
+            <div key={`spacer-${index}`} className="h-[70vh] md:h-[75vh] lg:h-[100vh]"></div>
           ))}
-          <div key={`spacer-offset`} className="h-[100vh]"></div>
+          <div key={`spacer-offset`} className="h-[70vh] md:h-[75vh] lg:h-[100vh]"></div>
           
           {/* プロフィールセクション - パララックススクロール対応 */}
           <div 
             className="h-screen flex items-center justify-center py-4 relative"
             style={{
-              transform: `translateY(${Math.max(0, (scrollY - (songs.length * windowHeight)) * 0.5)}px)`,
+              transform: `translateY(${Math.max(0, (scrollY - getProfileStartPosition()) * 0.5)}px)`,
               transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
             }}
           >
