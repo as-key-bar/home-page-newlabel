@@ -60,33 +60,52 @@ export default function SongCard({ song }: SongCardProps) {
     // とりあえず固定のパスを使用（後で動的に変更可能）
     return '/audio/noiseOK_askey_Vocaloid_happy_ending_theme_4424_rec01_premaster01.wav'
   }
+
+  // ジャケット画像のパスを生成
+  const getCoverImagePath = () => {
+    // とりあえず最初の画像を固定で使用
+    return '/images/covers/42.jpg'
+  }
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
+    <div 
+      className="rounded-lg shadow-md mb-4 relative overflow-hidden"
+      style={{
+        backgroundImage: `url(${getCoverImagePath()})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      {/* 背景オーバーレイ */}
+      <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
+      
+      {/* コンテンツ */}
+      <div className="relative z-10 p-6 text-white">
       <div className="flex justify-between items-start mb-2">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+        <h3 className="text-xl font-bold text-white">
           {song.title}
         </h3>
-        <span className="text-sm text-gray-500 dark:text-gray-400">
+        <span className="text-sm text-gray-200">
           {song.duration}
         </span>
       </div>
       
-      <p className="text-gray-600 dark:text-gray-300 mb-2">
+      <p className="text-gray-200 mb-2">
         {song.artist} • {song.album}
       </p>
       
-      <p className="text-gray-700 dark:text-gray-200 mb-3">
+      <p className="text-gray-100 mb-3">
         {song.description}
       </p>
       
       <div className="flex flex-wrap gap-2 mb-3">
-        <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full text-xs">
+        <span className="bg-blue-500/80 text-white px-2 py-1 rounded-full text-xs">
           {song.genre}
         </span>
         {song.tags.split(',').map((tag, index) => (
           <span
             key={index}
-            className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full text-xs"
+            className="bg-white/20 text-white px-2 py-1 rounded-full text-xs"
           >
             {tag.trim()}
           </span>
@@ -95,14 +114,14 @@ export default function SongCard({ song }: SongCardProps) {
       
       {song.originalTracks && (
         <div className="mb-3">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-gray-200">
             <span className="font-semibold">原曲:</span> {song.originalTracks}
           </p>
         </div>
       )}
       
       {/* 音声プレイヤー */}
-      <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+      <div className="mb-4 p-4 bg-black/30 rounded-lg backdrop-blur-sm">
         <audio
           ref={audioRef}
           src={getAudioPath()}
@@ -129,7 +148,7 @@ export default function SongCard({ song }: SongCardProps) {
           </button>
           
           <div className="flex-1">
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
+            <div className="flex items-center gap-2 text-sm text-gray-200 mb-1">
               <span>{formatTime(currentTime)}</span>
               <span>/</span>
               <span>{formatTime(duration)}</span>
@@ -140,7 +159,7 @@ export default function SongCard({ song }: SongCardProps) {
               max={duration || 0}
               value={currentTime}
               onChange={handleSeek}
-              className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
+              className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
             />
           </div>
         </div>
@@ -169,8 +188,9 @@ export default function SongCard({ song }: SongCardProps) {
         )}
       </div>
       
-      <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+      <div className="mt-3 text-xs text-gray-200">
         リリース日: {song.releaseDate}
+      </div>
       </div>
     </div>
   )
