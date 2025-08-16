@@ -664,40 +664,6 @@ export default function Home() {
             }}
             title={`${song.title} - クリックで再生`}
           >
-
-          {/* 楽曲情報表示 (1.5秒後) */}
-          {showingSongInfo === song.title && (
-            <div 
-              className="absolute right-4 top-1/2 transform -translate-y-2 text-white bg-transparent text-right opacity-0 translate-x-5 animate-fade-in w-2/5 max-w-2/5 pr-2"
-              style={{
-                animation: 'fadeIn 1000ms ease-out forwards',
-                zIndex: -(index + 2)  // 背景画像レイヤーより1つ下に配置
-              }}
-            >
-              <h3 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-bold mb-2 md:mb-4 drop-shadow-lg break-words leading-tight">
-                {song.title}
-              </h3>
-              <p className="text-lg sm:text-2xl md:text-3xl lg:text-5xl xl:text-7xl font-medium mb-2 md:mb-4 drop-shadow-md break-words leading-tight" style={{ opacity: 0.9 }}>
-                {song.artist}
-              </p>
-              <p className="text-sm sm:text-lg md:text-xl lg:text-2xl xl:text-4xl font-normal drop-shadow-md break-words leading-tight" style={{ opacity: 0.75 }}>
-                {song.album} • {song.genre}
-              </p>
-              <style jsx global>{`
-                @keyframes fadeIn {
-                  from {
-                    opacity: 0;
-                    transform: translateY(-50%) translateX(20px);
-                  }
-                  to {
-                    opacity: 1;
-                    transform: translateY(-50%) translateX(0);
-                  }
-                }
-              `}</style>
-            </div>
-          )}
-          
           </div>
         </React.Fragment>
       ))}
