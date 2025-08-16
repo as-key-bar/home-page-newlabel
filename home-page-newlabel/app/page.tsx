@@ -221,9 +221,20 @@ export default function Home() {
     return `brightness(${playingDarkness})`
   }
 
-  // 背景サイズ計算関数（アニメーション状態を反映）
+  // 背景サイズ計算関数（アニメーション状態を反映、レスポンシブ対応）
   const calculateBackgroundSize = (song: Song): string => {
     const animatedSize = backgroundSizes.get(song.title) || 135
+    
+    // 画面のアスペクト比を取得
+    const windowWidth = window.innerWidth
+    const aspectRatio = windowWidth / windowHeight
+    
+    // 縦長画面（アスペクト比が1未満）の場合、coverスタイルで上下を埋める
+    if (aspectRatio < 1) {
+      return 'cover'
+    }
+    
+    // 横長画面では従来通りのサイズ指定
     return `${animatedSize}%`
   }
 
@@ -693,8 +704,8 @@ export default function Home() {
           {songs.slice(0, -1).map((_, index) => (
             <div key={`spacer-${index}`} className="h-[70vh] md:h-[75vh] lg:h-[100vh]"></div>
           ))}
-          <div key={`spacer-offset`} className="h-[70vh] md:h-[75vh] lg:h-[100vh]"></div>
-          <div key={`spacer-offset`} className="h-[70vh] md:h-[75vh] lg:h-[100vh]"></div>
+          <div key={`spacer-offset`} className="h-[100vh] md:h-[100vh] lg:h-[100vh]"></div>
+          <div key={`spacer-offset`} className="h-[100vh] md:h-[100vh] lg:h-[100vh]"></div>
           
 
         </div>
