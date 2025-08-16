@@ -17,6 +17,7 @@ export default function Home() {
   const [backgroundSizes, setBackgroundSizes] = useState<Map<string, number>>(new Map())
   const [playingDarkenedSongs, setPlayingDarkenedSongs] = useState<Set<string>>(new Set())
   const [showingSongInfo, setShowingSongInfo] = useState<string | null>(null)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -362,6 +363,72 @@ export default function Home() {
 
   return (
     <div className="relative">
+      {/* 固定メニューボタン */}
+      <div className="fixed top-4 right-4 z-[9999]">
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="bg-white/80 backdrop-blur-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-4 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 transition-colors"
+          aria-label={isMenuOpen ? "メニューを閉じる" : "メニューを開く"}
+        >
+          <svg 
+            className={`w-6 h-6 transition-transform duration-300 ${isMenuOpen ? 'rotate-90' : ''}`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            {isMenuOpen ? (
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M6 18L18 6M6 6l12 12" 
+              />
+            ) : (
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M4 6h16M4 12h16M4 18h16" 
+              />
+            )}
+          </svg>
+        </button>
+      </div>
+
+      {/* スライドメニュー */}
+      <div 
+        className={`fixed top-0 right-0 h-full w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-2xl border-l border-gray-200 dark:border-gray-700 z-[9998] transform transition-transform duration-500 ease-in-out ${
+          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="p-6 pt-20">
+          <nav className="space-y-4">
+            <a
+              href="/license"
+              className="block px-6 py-4 text-lg text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/50 dark:hover:bg-gray-800/50 rounded-lg transition-all duration-200"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              License
+            </a>
+            <a
+              href="/contact"
+              className="block px-6 py-4 text-lg text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/50 dark:hover:bg-gray-800/50 rounded-lg transition-all duration-200"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Contact
+            </a>
+          </nav>
+        </div>
+      </div>
+
+      {/* オーバーレイ */}
+      {isMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 transition-opacity duration-300"
+          onClick={() => setIsMenuOpen(false)}
+        />
+      )}
+
       {/* ヘッダーパララックスレイヤー - ロゴ背景 */}
       <React.Fragment key="header-parallax">
         {/* ヘッダー背景画像レイヤー */}
@@ -385,7 +452,7 @@ export default function Home() {
           key="header-clickable"
           className="fixed top-0 left-0 w-full transition-all duration-300"
           style={{
-            height: '50vh',
+            height: '75vh',
             transform: `translateY(${scrollY * -0.8}px)`,
             zIndex: 100 + songs.length,
             transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
@@ -393,7 +460,7 @@ export default function Home() {
           }}
         >
           {/* ヘッダーコンテンツ */}
-          <header className="relative bg-white/80 shadow-sm backdrop-blur-sm h-full flex items-center">
+          <header className="relative bg-white/100 shadow-sm backdrop-blur-sm h-full flex items-center">
             <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center w-full">
               <div className="flex-1 flex flex-col items-center">
                 <div className="h-32 w-auto overflow-hidden flex items-center justify-center">
@@ -408,23 +475,9 @@ export default function Home() {
                   />
                 </div>
                 <p className="text-gray-600 dark:text-gray-400 mt-1 text-center">
-                  音楽活動の作品をまとめたポートフォリオサイト
+                  PLAY TO CLICK ART WORK
                 </p>
               </div>
-              <nav className="flex gap-4">
-                <a
-                  href="/license"
-                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-6 py-3 text-lg font-medium transition-colors"
-                >
-                  License
-                </a>
-                <a
-                  href="/contact"
-                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-6 py-3 text-lg font-medium transition-colors"
-                >
-                  Contact
-                </a>
-              </nav>
             </div>
           </header>
         </div>
