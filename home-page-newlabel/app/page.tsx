@@ -372,8 +372,9 @@ export default function Home() {
         {/* ヘッダークリック可能レイヤー */}
         <div
           key="header-clickable"
-          className="fixed inset-0 w-full h-full transition-all duration-300"
+          className="fixed top-0 left-0 w-full transition-all duration-300"
           style={{
+            height: '50vh',
             transform: `translateY(${scrollY * -0.8}px)`,
             zIndex: 100 + songs.length,
             transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
@@ -381,14 +382,14 @@ export default function Home() {
           }}
         >
           {/* ヘッダーコンテンツ */}
-          <header className="relative bg-white/80 shadow-sm backdrop-blur-sm">
-            <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-start">
+          <header className="relative bg-white/80 shadow-sm backdrop-blur-sm h-full flex items-center">
+            <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center w-full">
               <div className="flex-1 flex flex-col items-center">
-                <div className="h-48 w-auto overflow-hidden flex items-center justify-center">
+                <div className="h-32 w-auto overflow-hidden flex items-center justify-center">
                   <img 
                     src="/images/newlabel_logo.png" 
                     alt="NewLabel Logo" 
-                    className="h-96 w-auto object-cover"
+                    className="h-64 w-auto object-cover"
                     style={{
                       objectPosition: '50% 50%',
                       clipPath: 'inset(30% 0 40% 0)'
@@ -399,16 +400,16 @@ export default function Home() {
                   音楽活動の作品をまとめたポートフォリオサイト
                 </p>
               </div>
-              <nav className="flex gap-4 mt-2">
+              <nav className="flex gap-4">
                 <a
                   href="/license"
-                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-8 py-4 text-xl font-medium transition-colors"
+                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-6 py-3 text-lg font-medium transition-colors"
                 >
                   License
                 </a>
                 <a
                   href="/contact"
-                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-8 py-4 text-xl font-medium transition-colors"
+                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-6 py-3 text-lg font-medium transition-colors"
                 >
                   Contact
                 </a>
