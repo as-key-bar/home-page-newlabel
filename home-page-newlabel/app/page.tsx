@@ -574,26 +574,34 @@ export default function Home() {
       {/* パララックス背景レイヤー - songs.csvから動的生成 */}
       {songs.map((song, index) => (
         <React.Fragment key={`parallax-${song.title}-${index}`}>
-          {/* 背景画像レイヤー */}
+          {/* パララックスレイヤーコンテナ */}
           <div 
-            key={`background-${song.title}-${index}`}
+            key={`container-${song.title}-${index}`}
             className="fixed inset-0 w-full h-full"
             style={{
-              backgroundImage: `url(${song.coverImagePath})`,
-              backgroundSize: calculateBackgroundSize(song),
-              backgroundPosition: index === 0 
-                ? `center ${50 + (Math.max(0, scrollY - getBufferHeight()) * 0.08)}%`
-                : `center ${50 + (Math.max(0, scrollY - (getBufferHeight() + index * getResponsiveSpacerHeight())) * 0.05)}%`,
-              backgroundRepeat: 'no-repeat',
               transform: index === 0 
                 ? `translateY(${Math.max(0, scrollY - getBufferHeight()) * 1}px)` 
                 : `translateY(${Math.max(0, (scrollY - (getBufferHeight() + index * getResponsiveSpacerHeight())) * 1)}px)`,
               zIndex: -(index + 1),
-              filter: `${calculateLayerFilter(index, scrollY, windowHeight, song)} drop-shadow(0 10px 25px rgba(0, 0, 0, 1)) drop-shadow(0 4px 8px rgba(0, 0, 0, 1))`,
-              transition: 'filter 0.3s ease-out, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+              transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
             }}
           >
-            {/* 再生停止中アイコン */}
+            {/* 背景画像レイヤー（フィルター適用対象） */}
+            <div 
+              className="absolute inset-0 w-full h-full"
+              style={{
+                backgroundImage: `url(${song.coverImagePath})`,
+                backgroundSize: calculateBackgroundSize(song),
+                backgroundPosition: index === 0 
+                  ? `center ${50 + (Math.max(0, scrollY - getBufferHeight()) * 0.08)}%`
+                  : `center ${50 + (Math.max(0, scrollY - (getBufferHeight() + index * getResponsiveSpacerHeight())) * 0.05)}%`,
+                backgroundRepeat: 'no-repeat',
+                filter: `${calculateLayerFilter(index, scrollY, windowHeight, song)} drop-shadow(0 10px 25px rgba(0, 0, 0, 1)) drop-shadow(0 4px 8px rgba(0, 0, 0, 1))`,
+                transition: 'filter 0.3s ease-out'
+              }}
+            />
+
+            {/* 再生停止中アイコン（フィルター影響外） */}
             <div 
               className={`absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out ${
                 currentlyPlaying !== song.title ? 'opacity-100' : 'opacity-0'
@@ -624,12 +632,12 @@ export default function Home() {
               </div>
             </div>
 
-            {/* 楽曲情報表示 (1.5秒後) - 背景画像レイヤー内に配置 */}
+            {/* 楽曲情報表示（フィルター影響外） */}
             <div 
-              className={`absolute right-4 top-1/2 text-white bg-transparent text-right w-2/5 max-w-2/5 pr-2 transition-all duration-1000 ease-out ${
+              className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-white bg-transparent text-right w-2/5 max-w-2/5 pr-2 transition-all duration-1000 ease-out ${
                 showingSongInfo === song.title 
-                  ? 'opacity-100 transform -translate-y-2 translate-x-0' 
-                  : 'opacity-0 transform -translate-y-2 translate-x-5'
+                  ? 'opacity-100 transform -translate-y-1/2 translate-x-0' 
+                  : 'opacity-0 transform -translate-y-1/2 translate-x-5'
               }`}
             >
               <h3 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-bold mb-2 md:mb-4 drop-shadow-lg break-words leading-tight">
