@@ -182,8 +182,8 @@ export default function Home() {
     
     // スクロール開始前（暗くする）
     if (scrollY < layerStartPosition) {
-      const darknessFactor = Math.max(0, (layerStartPosition - scrollY) / spacerHeight)
-      const brightness = Math.max(0.3, 1 - darknessFactor * 0.7) // 最低30%の明度
+      const darknessFactor = Math.max(0, (layerStartPosition - scrollY) / spacerHeight/2)
+      const brightness = Math.max(0.3, 1 - darknessFactor * 0.85) // 最低15%の明度
       // 再生中の場合はさらに暗く
       const playingDarkness = isPlayingDarkened ? 0.7 : 1
       return `brightness(${brightness * playingDarkness})`
