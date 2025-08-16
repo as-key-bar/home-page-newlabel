@@ -17,7 +17,6 @@ export default function Home() {
   const [backgroundSizes, setBackgroundSizes] = useState<Map<string, number>>(new Map())
   const [playingDarkenedSongs, setPlayingDarkenedSongs] = useState<Set<string>>(new Set())
   const [showingSongInfo, setShowingSongInfo] = useState<string | null>(null)
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -363,71 +362,21 @@ export default function Home() {
 
   return (
     <div className="relative">
-      {/* 固定メニューボタン */}
-      <div className="fixed top-4 right-4 z-[9999]">
-        <button
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="bg-white/80 backdrop-blur-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-4 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 transition-colors"
-          aria-label={isMenuOpen ? "メニューを閉じる" : "メニューを開く"}
+      {/* 固定ナビゲーション */}
+      <nav className="fixed top-4 right-4 z-[9999] flex gap-2 md:gap-4 max-w-[33vw] md:max-w-none">
+        <a
+          href="/license"
+          className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-2 py-2 md:px-4 rounded-lg transition-colors font-medium text-sm md:text-base"
         >
-          <svg 
-            className={`w-6 h-6 transition-transform duration-300 ${isMenuOpen ? 'rotate-90' : ''}`}
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            {isMenuOpen ? (
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M6 18L18 6M6 6l12 12" 
-              />
-            ) : (
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M4 6h16M4 12h16M4 18h16" 
-              />
-            )}
-          </svg>
-        </button>
-      </div>
-
-      {/* スライドメニュー */}
-      <div 
-        className={`fixed top-0 right-0 h-full w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-2xl border-l border-gray-200 dark:border-gray-700 z-[9998] transform transition-transform duration-500 ease-in-out ${
-          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        <div className="p-6 pt-20">
-          <nav className="space-y-4">
-            <a
-              href="/license"
-              className="block px-6 py-4 text-lg text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/50 dark:hover:bg-gray-800/50 rounded-lg transition-all duration-200"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              License
-            </a>
-            <a
-              href="/contact"
-              className="block px-6 py-4 text-lg text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/50 dark:hover:bg-gray-800/50 rounded-lg transition-all duration-200"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Contact
-            </a>
-          </nav>
-        </div>
-      </div>
-
-      {/* オーバーレイ */}
-      {isMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 transition-opacity duration-300"
-          onClick={() => setIsMenuOpen(false)}
-        />
-      )}
+          License
+        </a>
+        <a
+          href="/contact"
+          className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-2 py-2 md:px-4 rounded-lg transition-colors font-medium text-sm md:text-base"
+        >
+          Contact
+        </a>
+      </nav>
 
       {/* ヘッダーパララックスレイヤー - ロゴ背景 */}
       <React.Fragment key="header-parallax">
@@ -460,7 +409,9 @@ export default function Home() {
           }}
         >
           {/* ヘッダーコンテンツ */}
-          <header className="relative bg-white/100 shadow-sm backdrop-blur-sm h-full flex items-center">
+          <header className="relative shadow-sm backdrop-blur-sm h-full flex items-center" style={{
+            background: 'linear-gradient(to bottom, rgba(255, 255, 255, 1) 70%, rgba(255, 255, 255, 0.8) 100%)'
+          }}>
             <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center w-full">
               <div className="flex-1 flex flex-col items-center">
                 <div className="h-32 w-auto overflow-hidden flex items-center justify-center">
@@ -475,7 +426,7 @@ export default function Home() {
                   />
                 </div>
                 <p className="text-gray-600 dark:text-gray-400 mt-1 text-center">
-                  PLAY TO CLICK ART WORK
+                  CLICK ART WORK TO PLAY MUSIC
                 </p>
               </div>
             </div>
