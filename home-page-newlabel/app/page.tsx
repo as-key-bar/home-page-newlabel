@@ -134,11 +134,17 @@ export default function Home() {
     return windowHeight  // デスクトップ
   }
 
+  // バッファ高さ計算関数（ヘッダー後の空白スペース）
+  const getBufferHeight = () => {
+    return getResponsiveSpacerHeight() * 0.8  // スペーサーの80%の高さをバッファとして使用
+  }
+
   // プロフィールセクションの開始位置計算関数
   const getProfileStartPosition = () => {
     const spacerHeight = getResponsiveSpacerHeight()
+    const bufferHeight = getBufferHeight()
     const totalSpacers = songs.length // オフセットスペーサーも含む
-    return totalSpacers * spacerHeight
+    return bufferHeight + totalSpacers * spacerHeight
   }
 
   // カスタムスムーススクロール関数（ゆっくりとした引っ張られるようなアニメーション）
@@ -174,7 +180,8 @@ export default function Home() {
   // パララックスレイヤーの色合い計算関数（再生状態も考慮）
   const calculateLayerFilter = (index: number, scrollY: number, windowHeight: number, song?: Song): string => {
     const spacerHeight = getResponsiveSpacerHeight()
-    const layerStartPosition = (index * spacerHeight)
+    const bufferHeight = getBufferHeight()
+    const layerStartPosition = bufferHeight + (index * spacerHeight)
     const layerEndPosition = layerStartPosition + spacerHeight/4
     
     // 再生中で0.5秒後に暗くなった楽曲かどうかチェック
@@ -268,7 +275,8 @@ export default function Home() {
 
     // クリックしたレイヤーの位置まで自動スクロール
     const spacerHeight = getResponsiveSpacerHeight()
-    const targetScrollPosition = (index) * spacerHeight
+    const bufferHeight = getBufferHeight()
+    const targetScrollPosition = bufferHeight + (index) * spacerHeight
     smoothScrollTo(targetScrollPosition)
 
     // 縮小アニメーション開始 (135% → 100%への滑らかな縮小)
@@ -343,6 +351,73 @@ export default function Home() {
 
   return (
     <div className="relative">
+      {/* ヘッダーパララックスレイヤー - ロゴ背景 */}
+      <React.Fragment key="header-parallax">
+        {/* ヘッダー背景画像レイヤー */}
+        <div 
+          key="header-background"
+          className="fixed inset-0 w-full h-full"
+          style={{
+            backgroundImage: `url(/images/newlabel_logo.png)`,
+            backgroundSize: '50%',
+            backgroundPosition: `center ${50 - (scrollY * 0.1)}%`,
+            backgroundRepeat: 'no-repeat',
+            transform: `translateY(${scrollY * -0.8}px)`,
+            zIndex: -(songs.length + 1),
+            filter: `brightness(0.9) saturate(0.8) blur(0.5px) drop-shadow(0 10px 25px rgba(0, 0, 0, 0.3))`,
+            transition: 'filter 0.3s ease-out, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+          }}
+        />
+        
+        {/* ヘッダークリック可能レイヤー */}
+        <div
+          key="header-clickable"
+          className="fixed inset-0 w-full h-full transition-all duration-300"
+          style={{
+            transform: `translateY(${scrollY * -0.8}px)`,
+            zIndex: 100 + songs.length,
+            transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+            pointerEvents: scrollY > 100 ? 'none' : 'auto'
+          }}
+        >
+          {/* ヘッダーコンテンツ */}
+          <header className="relative bg-white/80 shadow-sm backdrop-blur-sm">
+            <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-start">
+              <div className="flex-1 flex flex-col items-center">
+                <div className="h-48 w-auto overflow-hidden flex items-center justify-center">
+                  <img 
+                    src="/images/newlabel_logo.png" 
+                    alt="NewLabel Logo" 
+                    className="h-96 w-auto object-cover"
+                    style={{
+                      objectPosition: '50% 50%',
+                      clipPath: 'inset(30% 0 40% 0)'
+                    }}
+                  />
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 mt-1 text-center">
+                  音楽活動の作品をまとめたポートフォリオサイト
+                </p>
+              </div>
+              <nav className="flex gap-4 mt-2">
+                <a
+                  href="/license"
+                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-8 py-4 text-xl font-medium transition-colors"
+                >
+                  License
+                </a>
+                <a
+                  href="/contact"
+                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-8 py-4 text-xl font-medium transition-colors"
+                >
+                  Contact
+                </a>
+              </nav>
+            </div>
+          </header>
+        </div>
+      </React.Fragment>
+
       {/* パララックス背景レイヤー - songs.csvから動的生成 */}
       {songs.map((song, index) => (
         <React.Fragment key={`parallax-${song.title}-${index}`}>
@@ -354,12 +429,12 @@ export default function Home() {
               backgroundImage: `url(${song.coverImagePath})`,
               backgroundSize: calculateBackgroundSize(song),
               backgroundPosition: index === 0 
-                ? `center ${50 + (scrollY * 0.08)}%`
-                : `center ${50 + (Math.max(0, scrollY - (index * getResponsiveSpacerHeight())) * 0.05)}%`,
+                ? `center ${50 + (Math.max(0, scrollY - getBufferHeight()) * 0.08)}%`
+                : `center ${50 + (Math.max(0, scrollY - (getBufferHeight() + index * getResponsiveSpacerHeight())) * 0.05)}%`,
               backgroundRepeat: 'no-repeat',
               transform: index === 0 
-                ? `translateY(${scrollY * 1}px)` 
-                : `translateY(${Math.max(0, (scrollY - (index * getResponsiveSpacerHeight())) * 1)}px)`,
+                ? `translateY(${Math.max(0, scrollY - getBufferHeight()) * 1}px)` 
+                : `translateY(${Math.max(0, (scrollY - (getBufferHeight() + index * getResponsiveSpacerHeight())) * 1)}px)`,
               zIndex: -(index + 1),
               filter: `${calculateLayerFilter(index, scrollY, windowHeight, song)} drop-shadow(0 10px 25px rgba(0, 0, 0, 1)) drop-shadow(0 4px 8px rgba(0, 0, 0, 1))`,
               transition: 'filter 0.3s ease-out, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
@@ -404,8 +479,8 @@ export default function Home() {
             className="fixed inset-0 w-full h-full cursor-pointer transition-all duration-300"
             style={{
               transform: index === 0 
-                ? `translateY(${scrollY * 1}px)` 
-                : `translateY(${Math.max(0, (scrollY - (index * getResponsiveSpacerHeight())) * 1)}px)`,
+                ? `translateY(${Math.max(0, scrollY - getBufferHeight()) * 1}px)` 
+                : `translateY(${Math.max(0, (scrollY - (getBufferHeight() + index * getResponsiveSpacerHeight())) * 1)}px)`,
               zIndex: 100 - index,
               transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
               // backgroundColor: `hsl(${index * 360 / songs.length}, 70%, 50%, 0.3)`,
@@ -456,43 +531,6 @@ export default function Home() {
         </React.Fragment>
       ))}
 
-
-      {/* ヘッダー */}
-      <header className="relative z-20 bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-start">
-          <div className="flex-1 flex flex-col items-center">
-            <div className="h-48 w-auto overflow-hidden flex items-center justify-center">
-              <img 
-                src="/images/newlabel_logo.png" 
-                alt="NewLabel Logo" 
-                className="h-96 w-auto object-cover"
-                style={{
-                  objectPosition: '50% 50%',
-                  clipPath: 'inset(30% 0 40% 0)'
-                }}
-              />
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mt-1 text-center">
-              音楽活動の作品をまとめたポートフォリオサイト
-            </p>
-          </div>
-          <nav className="flex gap-4 mt-2">
-            <a
-              href="/license"
-              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-8 py-4 text-xl font-medium transition-colors"
-            >
-              License
-            </a>
-            <a
-              href="/contact"
-              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-8 py-4 text-xl font-medium transition-colors"
-            >
-              Contact
-            </a>
-          </nav>
-        </div>
-      </header>
-
       {/* メインコンテンツ */}
       <main className="relative z-10">
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -509,6 +547,9 @@ export default function Home() {
               </p>
             </div>
           )}
+          
+          {/* バッファスペーサー - ヘッダー後の空白スペース */}
+          <div key="buffer-spacer" className="h-[56vh] md:h-[56vh] lg:h-[80vh]"></div>
           
           {/* スクロール用のスペーサー - パララックスレイヤー数に合わせて動的生成（モバイル対応） */}
           {songs.slice(0, -1).map((_, index) => (
