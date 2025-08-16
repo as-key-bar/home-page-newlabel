@@ -593,6 +593,37 @@ export default function Home() {
               transition: 'filter 0.3s ease-out, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
             }}
           >
+            {/* 再生停止中アイコン */}
+            <div 
+              className={`absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out ${
+                currentlyPlaying !== song.title ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              <div className="relative">
+                {/* ブラー背景円 */}
+                <div 
+                  className="absolute inset-0 rounded-full  blur-sm"
+                  style={{
+                    width: '128px',
+                    height: '128px',
+                    transform: 'translate(-50%, -50%)',
+                    left: '50%',
+                    top: '50%'
+                  }}
+                />
+                {/* 三角形アイコン */}
+                <svg 
+                  className="w-16 h-16 md:w-24 md:h-24 text-transparent drop-shadow-lg relative z-10" 
+                  fill="currentColor" 
+                  viewBox="0 0 24 24"
+                  stroke="white"
+                  strokeWidth="2"
+                >
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </div>
+            </div>
+
             {/* 楽曲情報表示 (1.5秒後) - 背景画像レイヤー内に配置 */}
             {showingSongInfo === song.title && (
               <div 
