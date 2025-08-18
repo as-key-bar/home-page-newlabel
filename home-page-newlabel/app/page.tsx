@@ -284,6 +284,20 @@ export default function Home() {
     return `${animatedSize}%`
   }
 
+  // ヘッダースクロールと一番目の楽曲再生
+  const handleHeaderScrollClick = () => {
+    if (songs.length === 0) return
+    
+    // ヘッダーが見切れる位置までスクロール（バッファ高さまで）
+    const targetScrollPosition = getBufferHeight()
+    smoothScrollTo(targetScrollPosition)
+    
+    // 少し遅らせて一番目の楽曲を自動再生
+    setTimeout(() => {
+      playAudio(songs[0], 0)
+    }, 600) // スクロールアニメーション（400ms）完了後に実行
+  }
+
   // 音楽再生機能（滑らかな背景アニメーション対応）
   const playAudio = (song: Song, index: number) => {
     // 既存の音楽を停止（縮小アニメーション開始）
@@ -554,7 +568,11 @@ export default function Home() {
             </div>
             
             {/* スクロール促進アイコン */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+            <div 
+              className="absolute bottom-0 left-1/2 transform -translate-x-1/2 cursor-pointer hover:opacity-70 transition-opacity px-36 pb-6 pt-[100px]"
+              onClick={handleHeaderScrollClick}
+              title="最初の楽曲まで移動"
+            >
               <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-gray-500 opacity-100 animate-bounce"></div>
             </div>
           </header>
