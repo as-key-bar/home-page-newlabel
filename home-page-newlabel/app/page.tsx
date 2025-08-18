@@ -550,17 +550,18 @@ export default function Home() {
         {/* プロフィールコンテンツレイヤー */}
         <div
           key="profile-content"
-          className="fixed inset-0 w-full h-full flex items-center justify-center"
+          className="fixed inset-0 w-full h-full flex flex-col items-center justify-center"
           style={{
             zIndex: -(songs.length + 1),
             pointerEvents: 'auto'
           }}
         >
           {profile && (
-            <section className="bg-white/90 rounded-lg shadow-md p-3 w-full max-w-3xl mx-auto">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 text-center">
-              Profile
-            </h2>
+            <>
+              <section className="bg-white/90 rounded-lg shadow-md p-3 w-full max-w-3xl mx-auto">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 text-center">
+                Profile
+              </h2>
             
             <div className="flex flex-col md:flex-row gap-4 items-start">
               {/* プロフィール画像 */}
@@ -666,6 +667,25 @@ export default function Home() {
               </div>
             </div>
             </section>
+            
+            {/* ナビゲーションセクション */}
+            <section className="bg-white/90 rounded-lg shadow-md p-6 w-full max-w-3xl mx-auto mt-4">
+              <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
+                <a
+                  href="/license"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-medium text-center min-w-[200px]"
+                >
+                  楽曲利用規約はこちら
+                </a>
+                <a
+                  href="/contact"
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors font-medium text-center min-w-[200px]"
+                >
+                  お問い合わせはこちら
+                </a>
+              </div>
+            </section>
+            </>
           )}
         </div>
       </React.Fragment>
