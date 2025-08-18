@@ -1,4 +1,4 @@
 id,title,releaseDate,genre,description,originalTracks,audioPath,coverImagePath,visible
-1,"kagomekagome","2024-08-15","Electronic Pop","朝の光をテーマにしたアップテンポな楽曲","Original Song A, Original Song B","/audio/06_KEGAREWOMATOITE_KAGOMEKAGOME.wav","/images/covers/42.jpg",true
-2,"unrevertable","2024-07-20","Ambient","静寂な夜をイメージした癒し系の楽曲","Classical Piece X","/audio/05_unrevertable.wav","/images/covers/alien.jpg",true
-3,"13th","2024-06-10","Synthwave","80年代風のシンセサイザーサウンド","","/audio/04_13th.wav","/images/covers/extra.jpg",true
+1,kagomekagome,2024-08-15,Electronic Pop,朝の光をテーマにしたアップテンポな楽曲,"Original Song A, Original Song B",/audio/06_KEGAREWOMATOITE_KAGOMEKAGOME.wav,/images/covers/42.jpg,true
+2,unrevertable,2024-07-20,Ambient,静寂な夜をイメージした癒し系の楽曲,Classical Piece X,/audio/05_unrevertable.wav,/images/covers/alien.jpg,true
+3,13th,2024-06-10,Synthwave,80年代風のシンセサイザーサウンド,,/audio/04_13th.wav,/images/covers/extra.jpg,true

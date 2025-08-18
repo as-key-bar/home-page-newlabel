@@ -42,8 +42,10 @@ export default function Home() {
       fetch('/api/profile').then(res => res.json())
     ])
       .then(([songsData, profileData]) => {
-        if (Array.isArray(songsData)) {
-          setSongs(songsData)
+        if (songsData && songsData.songs && Array.isArray(songsData.songs)) {
+          // visible="true"の楽曲のみをフィルター
+          const visibleSongs = songsData.songs.filter(song => song.visible === 'true')
+          setSongs(visibleSongs)
         } else {
           setError('楽曲データの読み込みに失敗しました')
         }

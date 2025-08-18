@@ -19,7 +19,11 @@ export interface Song {
 
 // CSV形式に変換するヘルパー関数
 function escapeCSVField(field: string): string {
-  if (field.includes(',') || field.includes('"') || field.includes('\n')) {
+  // 空文字の場合はそのまま返す
+  if (!field) return ''
+  
+  // カンマ、改行、ダブルクォートが含まれる場合はクォートで囲む
+  if (field.includes(',') || field.includes('"') || field.includes('\n') || field.includes('\r')) {
     return `"${field.replace(/"/g, '""')}"`
   }
   return field
