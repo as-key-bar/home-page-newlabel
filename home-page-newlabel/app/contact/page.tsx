@@ -60,40 +60,20 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm">
+      <header className="shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-start">
           <div className="flex-1 flex flex-col items-center">
-            <div className="h-48 w-auto overflow-hidden flex items-center justify-center">
-              <Link href="/" className="hover:opacity-80">
-                <img 
-                  src="/images/newlabel_logo.png" 
-                  alt="NewLabel Logo" 
-                  className="h-96 w-auto object-cover"
-                  style={{
-                    objectPosition: '50% 50%',
-                    clipPath: 'inset(20% 0 20% 0)'
-                  }}
-                />
-              </Link>
-            </div>
+            <Link href="/" className="hover:opacity-80">
+              <img 
+                src="/images/newlabel_logotrim.png" 
+                alt="NewLabel Logo" 
+                className="h-24 w-auto object-contain"
+              />
+            </Link>
             <p className="text-gray-600 dark:text-gray-400 mt-1 text-center">
               お問い合わせ
             </p>
           </div>
-          <nav className="flex gap-4 mt-2">
-            <Link
-              href="/"
-              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-8 py-4 text-xl font-medium transition-colors"
-            >
-              Home
-            </Link>
-            <Link
-              href="/license"
-              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-8 py-4 text-xl font-medium transition-colors"
-            >
-              License
-            </Link>
-          </nav>
         </div>
       </header>
 
@@ -190,7 +170,7 @@ export default function Contact() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+              className="w-full bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
             >
               {isSubmitting ? '送信中...' : 'お問い合わせを送信'}
             </button>

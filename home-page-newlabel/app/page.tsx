@@ -672,7 +672,7 @@ export default function Home() {
                   <div className="flex gap-4 flex-wrap">
                     {profile.contact.email && (
                       <a href={`mailto:${profile.contact.email}`} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-xs">
+                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm">
                         Email
                       </a>
                     )}
@@ -680,7 +680,7 @@ export default function Home() {
                       <a href={profile.contact.twitter} 
                          className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
                          target="_blank" rel="noopener noreferrer">
-                        Twitter
+                        X/Twitter
                       </a>
                     )}
                     {profile.contact.soundcloud && (
@@ -804,7 +804,7 @@ export default function Home() {
                   <div className="flex gap-4 flex-wrap">
                     {profile.contact.email && (
                       <a href={`mailto:${profile.contact.email}`} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-xs">
+                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm">
                         Email
                       </a>
                     )}
@@ -812,7 +812,7 @@ export default function Home() {
                       <a href={profile.contact.twitter} 
                          className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
                          target="_blank" rel="noopener noreferrer">
-                        Twitter
+                        X/Twitter
                       </a>
                     )}
                     {profile.contact.soundcloud && (
