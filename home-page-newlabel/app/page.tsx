@@ -374,6 +374,88 @@ export default function Home() {
       
       {/* メインコンテンツ */}
     <div className="relative">
+      {/* 画面両端のドット列 */}
+      <div className="fixed left-0 top-0 w-4 h-screen z-50 overflow-hidden">
+        <div
+          className="flex flex-col items-center pt-8"
+          style={{
+            transform: `translateY(${(scrollY * -0.3) % 600}px)`,
+            height: 'calc(300vh + 600px)'
+          }}
+        >
+          {Array.from({ length: 50 }).map((_, index) => (
+            <div
+              key={`left-dot-${index}`}
+              className="w-2 h-2 bg-white rounded-full opacity-60 mb-12"
+            />
+          ))}
+        </div>
+      </div>
+      
+      <div className="fixed right-0 top-0 w-4 h-screen z-50 overflow-hidden">
+        <div
+          className="flex flex-col items-center pt-8"
+          style={{
+            transform: `translateY(${(scrollY * -0.3) % 600}px)`,
+            height: 'calc(300vh + 600px)'
+          }}
+        >
+          {Array.from({ length: 50 }).map((_, index) => (
+            <div
+              key={`right-dot-${index}`}
+              className="w-2 h-2 bg-white rounded-full opacity-60 mb-12"
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* 画面両端の三角形列（ドット列の内側） */}
+      <div className="fixed left-6 top-0 w-4 h-screen z-50 overflow-hidden">
+        <div
+          className="flex flex-col items-center pt-8"
+          style={{
+            transform: `translateY(${(scrollY * -0.3) % 600}px)`,
+            height: 'calc(300vh + 600px)'
+          }}
+        >
+          {Array.from({ length: 10 }).map((_, index) => (
+            <div
+              key={`left-triangle-${index}`}
+              className="w-0 h-0 opacity-60"
+              style={{
+                borderTop: '4px solid transparent',
+                borderBottom: '4px solid transparent',
+                borderLeft: '6px solid white',
+                marginBottom: '272px'
+              }}
+            />
+          ))}
+        </div>
+      </div>
+      
+      <div className="fixed right-6 top-0 w-4 h-screen z-50 overflow-hidden">
+        <div
+          className="flex flex-col items-center pt-8"
+          style={{
+            transform: `translateY(${(scrollY * -0.3) % 600}px)`,
+            height: 'calc(300vh + 600px)'
+          }}
+        >
+          {Array.from({ length: 10 }).map((_, index) => (
+            <div
+              key={`right-triangle-${index}`}
+              className="w-0 h-0 opacity-60"
+              style={{
+                borderTop: '4px solid transparent',
+                borderBottom: '4px solid transparent',
+                borderRight: '6px solid white',
+                marginBottom: '275px'
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
       {/* 固定ナビゲーション */}
       <nav className="fixed top-4 right-4 z-[9999] flex gap-2 md:gap-4 max-w-[33vw] md:max-w-none">
         <a
@@ -438,9 +520,14 @@ export default function Home() {
                   />
                 </div>
                 <p className="text-gray-600 dark:text-gray-400 mt-1 text-center">
-                  CLICK ART WORK TO PLAY MUSIC
+                  SCROLL AND PLAY DEMO
                 </p>
               </div>
+            </div>
+            
+            {/* スクロール促進アイコン */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+              <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-gray-500 opacity-100 animate-bounce"></div>
             </div>
           </header>
         </div>
