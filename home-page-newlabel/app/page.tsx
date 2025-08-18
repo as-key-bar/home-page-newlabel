@@ -3,11 +3,14 @@
 import React, { useEffect, useState } from 'react'
 import { Song } from './api/songs/route'
 import { Profile } from './api/profile/route'
+import LoadingScreen from '../components/LoadingScreen'
 
 export default function Home() {
   const [songs, setSongs] = useState<Song[]>([])
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isExiting, setIsExiting] = useState(false)
+  const [loadingStartTime, setLoadingStartTime] = useState(Date.now())
   const [error, setError] = useState<string | null>(null)
   const [scrollY, setScrollY] = useState(0)
   const [windowHeight, setWindowHeight] = useState(0)
@@ -38,7 +41,22 @@ export default function Home() {
         setError('データの読み込みに失敗しました')
         console.error(err)
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        const currentTime = Date.now()
+        const elapsedTime = currentTime - loadingStartTime
+        const minimumDisplayTime = 1000 // 最低1秒表示
+        
+        const remainingTime = Math.max(0, minimumDisplayTime - elapsedTime)
+        
+        setTimeout(() => {
+          // 落下アニメーション開始
+          setIsExiting(true)
+          // アニメーション完了後にローディング画面を非表示
+          setTimeout(() => {
+            setLoading(false)
+          }, 1200) // アニメーション完了後に余裕を持って非表示
+        }, remainingTime)
+      })
   }, [])
 
   // パララックススクロールとウィンドウサイズのイベントリスナー
@@ -339,17 +357,6 @@ export default function Home() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">読み込み中...</p>
-        </div>
-      </div>
-    )
-  }
-
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -361,6 +368,11 @@ export default function Home() {
   }
 
   return (
+    <>
+      {/* ローディング画面 - 固定位置で重ねて表示 */}
+      {loading && <LoadingScreen isExiting={isExiting} />}
+      
+      {/* メインコンテンツ */}
     <div className="relative">
       {/* 固定ナビゲーション */}
       <nav className="fixed top-4 right-4 z-[9999] flex gap-2 md:gap-4 max-w-[33vw] md:max-w-none">
@@ -707,5 +719,6 @@ export default function Home() {
         </div>
       </main>
     </div>
+    </>
   )
 }
