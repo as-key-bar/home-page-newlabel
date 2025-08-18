@@ -64,38 +64,20 @@ export default function License() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm">
+      <header className="shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-start">
           <div className="flex-1 flex flex-col items-center">
             <Link href="/" className="hover:opacity-80">
               <img 
-                src="/images/newlabel_logo.png" 
+                src="/images/newlabel_logotrim.png" 
                 alt="NewLabel Logo" 
-                className="h-96 w-auto object-cover"
-                style={{
-                  objectPosition: '50% 50%',
-                  clipPath: 'inset(30% 0 40% 0)'
-                }}
+                className="h-24 w-auto object-contain"
               />
             </Link>
             <p className="text-gray-600 dark:text-gray-400 mt-1 text-center">
               {license.title}
             </p>
           </div>
-          <nav className="flex gap-4 mt-2">
-            <Link
-              href="/"
-              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-8 py-4 text-xl font-medium transition-colors"
-            >
-              Home
-            </Link>
-            <Link
-              href="/contact"
-              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-8 py-4 text-xl font-medium transition-colors"
-            >
-              Contact
-            </Link>
-          </nav>
         </div>
       </header>
 
