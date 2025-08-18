@@ -50,13 +50,31 @@ export default function Contact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setSubmitMessage('')
     
-    // フォーム送信のシミュレーション
-    setTimeout(() => {
-      setSubmitMessage('お問い合わせありがとうございます。内容を確認後、ご連絡いたします。')
-      setFormData({ name: '', email: '', subject: '', message: '' })
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        setSubmitMessage(result.message || 'お問い合わせありがとうございます。内容を確認後、ご連絡いたします。')
+        setFormData({ name: '', email: '', subject: '', message: '' })
+      } else {
+        setSubmitMessage(`エラー: ${result.error || '送信に失敗しました。しばらく後でお試しください。'}`)
+      }
+    } catch (error) {
+      console.error('Contact form submission error:', error)
+      setSubmitMessage('ネットワークエラーが発生しました。しばらく後でお試しください。')
+    } finally {
       setIsSubmitting(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -96,7 +114,11 @@ export default function Contact() {
           </div>
 
           {submitMessage && (
-            <div className="mb-6 p-4 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-lg">
+            <div className={`mb-6 p-4 rounded-lg ${
+              submitMessage.includes('エラー') || submitMessage.includes('ネットワークエラー')
+                ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+            }`}>
               {submitMessage}
             </div>
           )}
