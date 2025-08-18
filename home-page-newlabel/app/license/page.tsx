@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import SlideMenu from '../../components/SlideMenu'
 
 interface LicenseSection {
   id: string
@@ -64,6 +65,7 @@ export default function License() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <SlideMenu />
       <header className="shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-start">
           <div className="flex-1 flex flex-col items-center">

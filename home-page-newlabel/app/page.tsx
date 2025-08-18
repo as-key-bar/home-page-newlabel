@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { Song } from './api/songs/route'
 import { Profile } from './api/profile/route'
 import LoadingScreen from '../components/LoadingScreen'
+import SlideMenu from '../components/SlideMenu'
 
 export default function Home() {
   const [songs, setSongs] = useState<Song[]>([])
@@ -501,21 +502,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 固定ナビゲーション */}
-      <nav className="fixed top-4 right-4 z-[9999] flex gap-2 md:gap-4 max-w-[33vw] md:max-w-none">
-        <a
-          href="/license"
-          className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-2 py-2 md:px-4 rounded-lg transition-colors font-medium text-sm md:text-base"
-        >
-          License
-        </a>
-        <a
-          href="/contact"
-          className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-2 py-2 md:px-4 rounded-lg transition-colors font-medium text-sm md:text-base"
-        >
-          Contact
-        </a>
-      </nav>
+      {/* スライドメニュー */}
+      <SlideMenu />
 
       {/* ヘッダーパララックスレイヤー - ロゴ背景 */}
       <React.Fragment key="header-parallax">
