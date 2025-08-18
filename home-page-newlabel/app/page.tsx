@@ -44,7 +44,7 @@ export default function Home() {
       .then(([songsData, profileData]) => {
         if (songsData && songsData.songs && Array.isArray(songsData.songs)) {
           // visible="true"の楽曲のみをフィルター
-          const visibleSongs = songsData.songs.filter(song => song.visible === 'true')
+          const visibleSongs = songsData.songs.filter((song: Song) => song.visible === 'true')
           setSongs(visibleSongs)
         } else {
           setError('楽曲データの読み込みに失敗しました')
@@ -237,7 +237,7 @@ export default function Home() {
     const layerEndPosition = layerStartPosition + spacerHeight/4
     
     // 再生中で0.5秒後に暗くなった楽曲かどうかチェック
-    const isPlayingDarkened = song && playingDarkenedSongs.has(song.id)
+    const isPlayingDarkened = song && playingDarkenedSongs.has(parseInt(song.id))
     
     // スクロール開始前（暗くする）
     if (scrollY < layerStartPosition) {
@@ -275,7 +275,7 @@ export default function Home() {
 
   // 背景サイズ計算関数（アニメーション状態を反映、レスポンシブ対応）
   const calculateBackgroundSize = (song: Song): string => {
-    const animatedSize = backgroundSizes.get(song.id) || 135
+    const animatedSize = backgroundSizes.get(parseInt(song.id)) || 135
     
     // 画面のアスペクト比を取得
     const windowWidth = window.innerWidth
@@ -331,13 +331,13 @@ export default function Home() {
     }
 
     // 同じ楽曲の場合は停止
-    if (currentlyPlaying === song.id) {
+    if (currentlyPlaying === parseInt(song.id)) {
       // 拡大アニメーションと明るさ復帰 (135%に戻す)
-      animateBackgroundSize(song.id, 135, 800)
+      animateBackgroundSize(parseInt(song.id), 135, 800)
       // 暗くなった状態から明るさを復帰
       setPlayingDarkenedSongs(prev => {
         const newSet = new Set(prev)
-        newSet.delete(song.id)
+        newSet.delete(parseInt(song.id))
         return newSet
       })
       // 楽曲情報表示を隠す
@@ -357,7 +357,7 @@ export default function Home() {
     smoothScrollTo(targetScrollPosition)
 
     // 縮小アニメーション開始 (135% → 100%への滑らかな縮小)
-    animateBackgroundSize(song.id, 100, 1200)
+    animateBackgroundSize(parseInt(song.id), 100, 1200)
 
     // 音楽再生準備
     const audio = new Audio(song.audioPath)
@@ -367,33 +367,33 @@ export default function Home() {
       audio.play().catch(error => {
         console.error('音楽の再生に失敗しました:', error)
         // エラー時は拡大
-        animateBackgroundSize(song.id, 135, 400)
+        animateBackgroundSize(parseInt(song.id), 135, 400)
       })
-      setCurrentlyPlaying(song.id)
+      setCurrentlyPlaying(parseInt(song.id))
       setAudioRef(audio)
       
       // 1秒後に画像を暗くする
       setTimeout(() => {
         setPlayingDarkenedSongs(prev => {
           const newSet = new Set(prev)
-          newSet.add(song.id)
+          newSet.add(parseInt(song.id))
           return newSet
         })
       }, 1000)
       
       // 1.5秒後に楽曲情報を表示する
       setTimeout(() => {
-        setShowingSongInfo(song.id)
+        setShowingSongInfo(parseInt(song.id))
       }, 1500) 
     }, 300) // 拡大アニメーション開始後少し遅らせて音楽再生
     
     audio.onended = () => {
       // 楽曲終了時の拡大アニメーションと明るさ復帰
-      animateBackgroundSize(song.id, 135, 800)
+      animateBackgroundSize(parseInt(song.id), 135, 800)
       // 暗くなった状態から明るさを復帰
       setPlayingDarkenedSongs(prev => {
         const newSet = new Set(prev)
-        newSet.delete(song.id)
+        newSet.delete(parseInt(song.id))
         return newSet
       })
       // 楽曲情報表示を隠す
@@ -860,10 +860,10 @@ export default function Home() {
 
       {/* パララックス背景レイヤー - songs.csvから動的生成 */}
       {songs.map((song, index) => (
-        <React.Fragment key={`parallax-${song.id}-${index}`}>
+        <React.Fragment key={`parallax-${parseInt(song.id)}-${index}`}>
           {/* パララックスレイヤーコンテナ */}
           <div 
-            key={`container-${song.id}-${index}`}
+            key={`container-${parseInt(song.id)}-${index}`}
             className="fixed inset-0 w-full h-full"
             style={{
               transform: index === 0 
@@ -891,7 +891,7 @@ export default function Home() {
             {/* 再生停止中アイコン（フィルター影響外） */}
             <div 
               className={`absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out ${
-                currentlyPlaying !== song.id ? 'opacity-100' : 'opacity-0'
+                currentlyPlaying !== parseInt(song.id) ? 'opacity-100' : 'opacity-0'
               }`}
             >
               <div className="relative">
@@ -922,7 +922,7 @@ export default function Home() {
             {/* 楽曲情報表示（フィルター影響外） */}
             <div 
               className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-white bg-transparent text-right w-2/5 max-w-2/5 pr-2 transition-all duration-1000 ease-out ${
-                showingSongInfo === song.id 
+                showingSongInfo === parseInt(song.id) 
                   ? 'opacity-100 transform -translate-y-1/2 translate-x-0' 
                   : 'opacity-0 transform -translate-y-1/2 translate-x-5'
               }`}
@@ -941,7 +941,7 @@ export default function Home() {
           
           {/* クリック可能な透明レイヤー */}
           <div
-            key={`clickable-${song.id}`}
+            key={`clickable-${parseInt(song.id)}`}
             className="fixed inset-0 w-full h-full cursor-pointer transition-all duration-300"
             style={{
               transform: index === 0 

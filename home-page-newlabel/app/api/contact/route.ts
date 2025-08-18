@@ -1,35 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 
-// Gmail SMTP設定（Vercel最適化版）
+// Gmail SMTP設定（TypeScript型安全版）
 const createTransporter = () => {
   console.log('Creating transporter with configuration:')
   console.log('Host: smtp.gmail.com')
   console.log('Port: 587')
   console.log('User:', process.env.GMAIL_USER ? 'Set' : 'Missing')
   
-  return nodemailer.createTransporter({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // STARTTLS使用
+  // TypeScript型エラー回避のための明示的な設定
+  const transportConfig: any = {
+    service: 'gmail',
     auth: {
       user: process.env.GMAIL_USER,
       pass: process.env.GMAIL_APP_PASSWORD,
     },
-    // Vercel Edge Runtime対応
-    tls: {
-      rejectUnauthorized: false,
-      ciphers: 'TLSv1.2'
-    },
-    connectionTimeout: 10000, // 10秒
-    greetingTimeout: 5000,    // 5秒
-    socketTimeout: 15000,     // 15秒
-    // プール接続を無効化（サーバーレス環境向け）
     pool: false,
     maxConnections: 1,
-    rateDelta: 20000,
-    rateLimit: 5
-  })
+    // Vercel環境での追加設定
+    tls: {
+      rejectUnauthorized: false
+    }
+  }
+  
+  return nodemailer.createTransport(transportConfig)
 }
 
 export async function POST(request: NextRequest) {
