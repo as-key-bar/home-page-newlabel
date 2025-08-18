@@ -4,18 +4,15 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 
 export interface Song {
+  id: number
   title: string
-  artist: string
-  album: string
   releaseDate: string
   genre: string
-  streamingUrl: string
-  downloadUrl: string
   description: string
-  tags: string
   originalTracks: string
   audioPath: string
   coverImagePath: string
+  visible: boolean
 }
 
 export async function GET() {
@@ -26,9 +23,22 @@ export async function GET() {
     const records = parse(csvContent, {
       columns: true,
       skip_empty_lines: true,
-    }) as Song[]
+    })
     
-    return NextResponse.json(records)
+    // CSVから読み込んだデータの型変換
+    const songs: Song[] = records.map((record: any) => ({
+      id: parseInt(record.id),
+      title: record.title,
+      releaseDate: record.releaseDate,
+      genre: record.genre,
+      description: record.description,
+      originalTracks: record.originalTracks,
+      audioPath: record.audioPath,
+      coverImagePath: record.coverImagePath,
+      visible: record.visible === 'true' || record.visible === true
+    }))
+    
+    return NextResponse.json(songs)
   } catch (error) {
     console.error('Error reading CSV:', error)
     return NextResponse.json({ error: 'Failed to load songs' }, { status: 500 })

@@ -89,7 +89,7 @@ export default function SongCard({ song }: SongCardProps) {
       </div>
       
       <p className="text-gray-200 mb-2">
-        {song.artist} • {song.album}
+        {song.genre} • {song.releaseDate}
       </p>
       
       <p className="text-gray-100 mb-3">
@@ -100,14 +100,6 @@ export default function SongCard({ song }: SongCardProps) {
         <span className="bg-blue-500/80 text-white px-2 py-1 rounded-full text-xs">
           {song.genre}
         </span>
-        {song.tags.split(',').map((tag, index) => (
-          <span
-            key={index}
-            className="bg-white/20 text-white px-2 py-1 rounded-full text-xs"
-          >
-            {tag.trim()}
-          </span>
-        ))}
       </div>
       
       {song.originalTracks && (
@@ -163,28 +155,6 @@ export default function SongCard({ song }: SongCardProps) {
         </div>
       </div>
 
-      <div className="flex gap-2">
-        {song.streamingUrl && (
-          <a
-            href={song.streamingUrl}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            外部で試聴
-          </a>
-        )}
-        {song.downloadUrl && (
-          <a
-            href={song.downloadUrl}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            ダウンロード
-          </a>
-        )}
-      </div>
       
       <div className="mt-3 text-xs text-gray-200">
         リリース日: {song.releaseDate}

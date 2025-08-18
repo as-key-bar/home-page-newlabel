@@ -11,12 +11,12 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [scrollY, setScrollY] = useState(0)
   const [windowHeight, setWindowHeight] = useState(0)
-  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null)
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<number | null>(null)
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null)
-  const [animatingTo, setAnimatingTo] = useState<string | null>(null)
-  const [backgroundSizes, setBackgroundSizes] = useState<Map<string, number>>(new Map())
-  const [playingDarkenedSongs, setPlayingDarkenedSongs] = useState<Set<string>>(new Set())
-  const [showingSongInfo, setShowingSongInfo] = useState<string | null>(null)
+  const [animatingTo, setAnimatingTo] = useState<number | null>(null)
+  const [backgroundSizes, setBackgroundSizes] = useState<Map<number, number>>(new Map())
+  const [playingDarkenedSongs, setPlayingDarkenedSongs] = useState<Set<number>>(new Set())
+  const [showingSongInfo, setShowingSongInfo] = useState<number | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -64,9 +64,9 @@ export default function Home() {
   }, [])
 
   // 滑らかな背景サイズアニメーション関数
-  const animateBackgroundSize = (songTitle: string, targetSize: number, duration: number = 1200) => {
+  const animateBackgroundSize = (songId: number, targetSize: number, duration: number = 1200) => {
     const startTime = Date.now()
-    const currentSize = backgroundSizes.get(songTitle) || 135
+    const currentSize = backgroundSizes.get(songId) || 135
     const sizeDifference = targetSize - currentSize
     
     const animate = () => {
@@ -77,7 +77,7 @@ export default function Home() {
       const easedProgress = 1 - Math.pow(1 - progress, 3)
       const currentAnimatedSize = currentSize + (sizeDifference * easedProgress)
       
-      setBackgroundSizes(prev => new Map(prev).set(songTitle, currentAnimatedSize))
+      setBackgroundSizes(prev => new Map(prev).set(songId, currentAnimatedSize))
       
       if (progress < 1) {
         requestAnimationFrame(animate)
@@ -185,7 +185,7 @@ export default function Home() {
     const layerEndPosition = layerStartPosition + spacerHeight/4
     
     // 再生中で0.5秒後に暗くなった楽曲かどうかチェック
-    const isPlayingDarkened = song && playingDarkenedSongs.has(song.title)
+    const isPlayingDarkened = song && playingDarkenedSongs.has(song.id)
     
     // スクロール開始前（暗くする）
     if (scrollY < layerStartPosition) {
@@ -223,7 +223,7 @@ export default function Home() {
 
   // 背景サイズ計算関数（アニメーション状態を反映、レスポンシブ対応）
   const calculateBackgroundSize = (song: Song): string => {
-    const animatedSize = backgroundSizes.get(song.title) || 135
+    const animatedSize = backgroundSizes.get(song.id) || 135
     
     // 画面のアスペクト比を取得
     const windowWidth = window.innerWidth
@@ -265,13 +265,13 @@ export default function Home() {
     }
 
     // 同じ楽曲の場合は停止
-    if (currentlyPlaying === song.title) {
+    if (currentlyPlaying === song.id) {
       // 拡大アニメーションと明るさ復帰 (135%に戻す)
-      animateBackgroundSize(song.title, 135, 800)
+      animateBackgroundSize(song.id, 135, 800)
       // 暗くなった状態から明るさを復帰
       setPlayingDarkenedSongs(prev => {
         const newSet = new Set(prev)
-        newSet.delete(song.title)
+        newSet.delete(song.id)
         return newSet
       })
       // 楽曲情報表示を隠す
@@ -291,7 +291,7 @@ export default function Home() {
     smoothScrollTo(targetScrollPosition)
 
     // 縮小アニメーション開始 (135% → 100%への滑らかな縮小)
-    animateBackgroundSize(song.title, 100, 1200)
+    animateBackgroundSize(song.id, 100, 1200)
 
     // 音楽再生準備
     const audio = new Audio(song.audioPath)
@@ -301,33 +301,33 @@ export default function Home() {
       audio.play().catch(error => {
         console.error('音楽の再生に失敗しました:', error)
         // エラー時は拡大
-        animateBackgroundSize(song.title, 135, 400)
+        animateBackgroundSize(song.id, 135, 400)
       })
-      setCurrentlyPlaying(song.title)
+      setCurrentlyPlaying(song.id)
       setAudioRef(audio)
       
       // 1秒後に画像を暗くする
       setTimeout(() => {
         setPlayingDarkenedSongs(prev => {
           const newSet = new Set(prev)
-          newSet.add(song.title)
+          newSet.add(song.id)
           return newSet
         })
       }, 1000)
       
       // 1.5秒後に楽曲情報を表示する
       setTimeout(() => {
-        setShowingSongInfo(song.title)
+        setShowingSongInfo(song.id)
       }, 1500) 
     }, 300) // 拡大アニメーション開始後少し遅らせて音楽再生
     
     audio.onended = () => {
       // 楽曲終了時の拡大アニメーションと明るさ復帰
-      animateBackgroundSize(song.title, 135, 800)
+      animateBackgroundSize(song.id, 135, 800)
       // 暗くなった状態から明るさを復帰
       setPlayingDarkenedSongs(prev => {
         const newSet = new Set(prev)
-        newSet.delete(song.title)
+        newSet.delete(song.id)
         return newSet
       })
       // 楽曲情報表示を隠す
@@ -573,10 +573,10 @@ export default function Home() {
 
       {/* パララックス背景レイヤー - songs.csvから動的生成 */}
       {songs.map((song, index) => (
-        <React.Fragment key={`parallax-${song.title}-${index}`}>
+        <React.Fragment key={`parallax-${song.id}-${index}`}>
           {/* パララックスレイヤーコンテナ */}
           <div 
-            key={`container-${song.title}-${index}`}
+            key={`container-${song.id}-${index}`}
             className="fixed inset-0 w-full h-full"
             style={{
               transform: index === 0 
@@ -604,7 +604,7 @@ export default function Home() {
             {/* 再生停止中アイコン（フィルター影響外） */}
             <div 
               className={`absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out ${
-                currentlyPlaying !== song.title ? 'opacity-100' : 'opacity-0'
+                currentlyPlaying !== song.id ? 'opacity-100' : 'opacity-0'
               }`}
             >
               <div className="relative">
@@ -635,7 +635,7 @@ export default function Home() {
             {/* 楽曲情報表示（フィルター影響外） */}
             <div 
               className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-white bg-transparent text-right w-2/5 max-w-2/5 pr-2 transition-all duration-1000 ease-out ${
-                showingSongInfo === song.title 
+                showingSongInfo === song.id 
                   ? 'opacity-100 transform -translate-y-1/2 translate-x-0' 
                   : 'opacity-0 transform -translate-y-1/2 translate-x-5'
               }`}
@@ -644,17 +644,17 @@ export default function Home() {
                 {song.title}
               </h3>
               <p className="text-lg sm:text-2xl md:text-3xl lg:text-5xl xl:text-7xl font-medium mb-2 md:mb-4 drop-shadow-md break-words leading-tight" style={{ opacity: 0.9 }}>
-                {song.artist}
+                {song.genre}
               </p>
               <p className="text-sm sm:text-lg md:text-xl lg:text-2xl xl:text-4xl font-normal drop-shadow-md break-words leading-tight" style={{ opacity: 0.75 }}>
-                {song.album} • {song.genre}
+                {song.releaseDate}
               </p>
             </div>
           </div>
           
           {/* クリック可能な透明レイヤー */}
           <div
-            key={`clickable-${song.title}`}
+            key={`clickable-${song.id}`}
             className="fixed inset-0 w-full h-full cursor-pointer transition-all duration-300"
             style={{
               transform: index === 0 
