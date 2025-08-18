@@ -721,9 +721,10 @@ export default function Home() {
 
       {/* 最下部スクロール時クリックレイヤー */}
       <div
-        className="fixed inset-0 w-full h-full flex flex-col items-center justify-center "
+        className="fixed inset-0 w-full h-full flex flex-col items-center justify-center"
         style={{
           zIndex: 300,
+          pointerEvents: isAtBottom ? 'auto' : 'none'
         }}
       >
         {isAtBottom && profile && (
