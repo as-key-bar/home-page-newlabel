@@ -21,6 +21,18 @@ export default function Home() {
   const [playingDarkenedSongs, setPlayingDarkenedSongs] = useState<Set<number>>(new Set())
   const [showingSongInfo, setShowingSongInfo] = useState<number | null>(null)
   const [isAtBottom, setIsAtBottom] = useState(false)
+  const [showInitialLoading, setShowInitialLoading] = useState(true)
+
+  // サイト内遷移の検知
+  useEffect(() => {
+    // セッションストレージでサイト内遷移を検知
+    const hasVisited = sessionStorage.getItem('hasVisitedSite')
+    if (hasVisited) {
+      setShowInitialLoading(false)
+    } else {
+      sessionStorage.setItem('hasVisitedSite', 'true')
+    }
+  }, [])
 
   useEffect(() => {
     Promise.all([
@@ -49,6 +61,12 @@ export default function Home() {
         
         const remainingTime = Math.max(0, minimumDisplayTime - elapsedTime)
         
+        // サイト内遷移の場合はローディング画面をスキップ
+        if (!showInitialLoading) {
+          setLoading(false)
+          return
+        }
+        
         setTimeout(() => {
           // 落下アニメーション開始
           setIsExiting(true)
@@ -58,7 +76,7 @@ export default function Home() {
           }, 1200) // アニメーション完了後に余裕を持って非表示
         }, remainingTime)
       })
-  }, [])
+  }, [showInitialLoading])
 
   // パララックススクロールとウィンドウサイズのイベントリスナー
   useEffect(() => {
