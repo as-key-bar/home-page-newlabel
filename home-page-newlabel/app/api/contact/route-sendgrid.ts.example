@@ -1,35 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import nodemailer from 'nodemailer'
+import sgMail from '@sendgrid/mail'
 
-// Gmail SMTP設定（Vercel最適化版）
-const createTransporter = () => {
-  console.log('Creating transporter with configuration:')
-  console.log('Host: smtp.gmail.com')
-  console.log('Port: 587')
-  console.log('User:', process.env.GMAIL_USER ? 'Set' : 'Missing')
-  
-  return nodemailer.createTransporter({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // STARTTLS使用
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
-    },
-    // Vercel Edge Runtime対応
-    tls: {
-      rejectUnauthorized: false,
-      ciphers: 'TLSv1.2'
-    },
-    connectionTimeout: 10000, // 10秒
-    greetingTimeout: 5000,    // 5秒
-    socketTimeout: 15000,     // 15秒
-    // プール接続を無効化（サーバーレス環境向け）
-    pool: false,
-    maxConnections: 1,
-    rateDelta: 20000,
-    rateLimit: 5
-  })
+// SendGrid設定
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 }
 
 export async function POST(request: NextRequest) {
@@ -56,37 +30,29 @@ export async function POST(request: NextRequest) {
 
     // 環境変数チェック
     console.log('Environment variables check:')
-    console.log('GMAIL_USER:', process.env.GMAIL_USER ? '✓ Set' : '✗ Missing')
-    console.log('GMAIL_APP_PASSWORD:', process.env.GMAIL_APP_PASSWORD ? '✓ Set' : '✗ Missing')
+    console.log('SENDGRID_API_KEY:', process.env.SENDGRID_API_KEY ? '✓ Set' : '✗ Missing')
     console.log('ADMIN_EMAIL:', process.env.ADMIN_EMAIL ? '✓ Set' : '✗ Missing')
+    console.log('SENDGRID_FROM_EMAIL:', process.env.SENDGRID_FROM_EMAIL ? '✓ Set' : '✗ Missing')
     
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD || !process.env.ADMIN_EMAIL) {
-      console.error('Gmail configuration missing')
+    if (!process.env.SENDGRID_API_KEY || !process.env.ADMIN_EMAIL || !process.env.SENDGRID_FROM_EMAIL) {
+      console.error('SendGrid configuration missing')
       return NextResponse.json(
         { error: 'メール設定に問題があります。管理者にお問い合わせください。' },
         { status: 500 }
       )
     }
 
-    // トランスポーター作成と接続テスト
-    const transporter = createTransporter()
     const adminEmail = process.env.ADMIN_EMAIL
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL
     const fromName = process.env.FROM_NAME || '.new label'
-    
-    // SMTP接続テスト（Vercel環境での問題診断用）
-    console.log('Testing SMTP connection...')
-    try {
-      await transporter.verify()
-      console.log('SMTP connection verified successfully')
-    } catch (verifyError) {
-      console.error('SMTP verification failed:', verifyError)
-      // 接続テスト失敗でも処理を続行（より詳細なエラーを取得するため）
-    }
 
     // 管理者向けメール
-    const adminMailOptions = {
-      from: `"${fromName}" <${process.env.GMAIL_USER}>`,
+    const adminMsg = {
       to: adminEmail,
+      from: {
+        email: fromEmail,
+        name: fromName
+      },
       subject: `[お問い合わせ] ${subject}`,
       html: `
         <h3>新しいお問い合わせが届きました</h3>
@@ -106,9 +72,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 自動返信メール
-    const autoReplyOptions = {
-      from: `"${fromName}" <${process.env.GMAIL_USER}>`,
+    const autoReplyMsg = {
       to: email,
+      from: {
+        email: fromEmail,
+        name: fromName
+      },
       subject: 'お問い合わせありがとうございます',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px;">
@@ -136,24 +105,14 @@ export async function POST(request: NextRequest) {
       `,
     }
 
-    // メール送信（Vercel対応版）
-    console.log('Sending admin email...')
+    // SendGridでメール送信
     try {
-      await transporter.sendMail(adminMailOptions)
-      console.log('Admin email sent successfully')
-    } catch (emailError) {
-      console.error('Failed to send admin email:', emailError)
-      throw new Error('管理者メールの送信に失敗しました')
-    }
-    
-    console.log('Sending auto-reply email...')
-    try {
-      await transporter.sendMail(autoReplyOptions)
-      console.log('Auto-reply email sent successfully')
-    } catch (emailError) {
-      console.error('Failed to send auto-reply email:', emailError)
-      // 自動返信の失敗は致命的エラーにしない
-      console.log('Auto-reply failed, but continuing...')
+      console.log('Sending emails via SendGrid...')
+      await sgMail.send([adminMsg, autoReplyMsg])
+      console.log('Emails sent successfully via SendGrid')
+    } catch (error) {
+      console.error('SendGrid error:', error)
+      throw new Error('メール送信に失敗しました')
     }
 
     console.log('Contact form submission successful:', {
@@ -174,29 +133,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Contact form error:', error)
     
-    // 詳細なエラー情報をログ出力
     if (error instanceof Error) {
-      console.error('Error message:', error.message)
-      console.error('Error stack:', error.stack)
-      
-      // 特定のエラータイプの処理
-      if (error.message.includes('ENOTFOUND') || error.message.includes('ECONNREFUSED')) {
-        console.error('Network connection error - DNS or connection issue')
-      } else if (error.message.includes('Invalid login')) {
-        console.error('Authentication failed - check Gmail credentials')
-      } else if (error.message.includes('ETIMEDOUT')) {
-        console.error('Connection timeout - network or firewall issue')
-      }
+      console.error('Error details:', error.message)
     }
     
-    // 開発環境でのみ詳細エラーを返す
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    const errorMessage = isDevelopment && error instanceof Error 
-      ? `開発モード: ${error.message}` 
-      : 'メール送信に失敗しました。しばらく後でお試しください。'
-    
     return NextResponse.json(
-      { error: errorMessage },
+      { error: 'メール送信に失敗しました。しばらく後でお試しください。' },
       { status: 500 }
     )
   }
