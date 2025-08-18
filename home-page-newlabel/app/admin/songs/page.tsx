@@ -10,6 +10,8 @@ export default function SongsAdmin() {
   const [successMessage, setSuccessMessage] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingSong, setEditingSong] = useState<Song | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingAudio, setUploadingAudio] = useState(false)
   
   const [formData, setFormData] = useState({
     title: '',
@@ -170,6 +172,34 @@ export default function SongsAdmin() {
     }
   }
 
+  // 表示・非表示の直接トグル
+  const handleToggleVisibility = async (song: Song) => {
+    clearMessages()
+    
+    try {
+      const updatedSong = {
+        ...song,
+        visible: song.visible === 'true' ? 'false' : 'true'
+      }
+      
+      const response = await fetch('/api/songs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedSong)
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '表示状態の更新に失敗しました')
+      }
+      
+      setSuccessMessage(`「${song.title}」の表示状態を更新しました`)
+      fetchSongs()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '表示状態の更新に失敗しました')
+    }
+  }
+
   // フォーム入力の処理
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -179,6 +209,74 @@ export default function SongsAdmin() {
   // トグルの処理
   const handleToggleVisible = () => {
     setFormData(prev => ({ ...prev, visible: prev.visible === 'true' ? 'false' : 'true' }))
+  }
+
+  // 画像アップロード
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingImage(true)
+    clearMessages()
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/upload/images', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '画像のアップロードに失敗しました')
+      }
+
+      const result = await response.json()
+      setFormData(prev => ({ ...prev, coverImagePath: result.filePath }))
+      setSuccessMessage('画像が正常にアップロードされました')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '画像のアップロードに失敗しました')
+    } finally {
+      setUploadingImage(false)
+      // ファイル入力をリセット
+      e.target.value = ''
+    }
+  }
+
+  // 音声アップロード
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingAudio(true)
+    clearMessages()
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/upload/audio', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '音声ファイルのアップロードに失敗しました')
+      }
+
+      const result = await response.json()
+      setFormData(prev => ({ ...prev, audioPath: result.filePath }))
+      setSuccessMessage('音声ファイルが正常にアップロードされました')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '音声ファイルのアップロードに失敗しました')
+    } finally {
+      setUploadingAudio(false)
+      // ファイル入力をリセット
+      e.target.value = ''
+    }
   }
 
   if (loading) {
@@ -288,39 +386,85 @@ export default function SongsAdmin() {
                 
                 <div>
                   <label className="block text-sm font-medium mb-1">音声ファイルパス</label>
-                  <input
-                    type="text"
-                    name="audioPath"
-                    value={formData.audioPath}
-                    onChange={handleInputChange}
-                    placeholder="/audio/filename.wav"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
-                  />
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      name="audioPath"
+                      value={formData.audioPath}
+                      onChange={handleInputChange}
+                      placeholder="/audio/filename.wav"
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
+                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        onChange={handleAudioUpload}
+                        disabled={uploadingAudio}
+                        className="hidden"
+                        id="audio-upload"
+                      />
+                      <label
+                        htmlFor="audio-upload"
+                        className={`px-3 py-1 text-sm rounded cursor-pointer transition-colors ${
+                          uploadingAudio
+                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                            : 'bg-green-600 hover:bg-green-700 text-white'
+                        }`}
+                      >
+                        {uploadingAudio ? 'アップロード中...' : '音声ファイルをアップロード'}
+                      </label>
+                      <span className="text-xs text-gray-400">または直接パスを入力</span>
+                    </div>
+                  </div>
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium mb-1">カバー画像パス</label>
-                  <input
-                    type="text"
-                    name="coverImagePath"
-                    value={formData.coverImagePath}
-                    onChange={handleInputChange}
-                    placeholder="/images/covers/filename.jpg"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
-                  />
-                  {formData.coverImagePath && (
-                    <div className="mt-2">
-                      <img
-                        src={formData.coverImagePath}
-                        alt="プレビュー"
-                        className="w-16 h-16 object-cover rounded border border-gray-600"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          target.style.display = 'none'
-                        }}
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      name="coverImagePath"
+                      value={formData.coverImagePath}
+                      onChange={handleInputChange}
+                      placeholder="/images/covers/filename.jpg"
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
+                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImage}
+                        className="hidden"
+                        id="image-upload"
                       />
+                      <label
+                        htmlFor="image-upload"
+                        className={`px-3 py-1 text-sm rounded cursor-pointer transition-colors ${
+                          uploadingImage
+                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
+                      >
+                        {uploadingImage ? 'アップロード中...' : '画像をアップロード'}
+                      </label>
+                      <span className="text-xs text-gray-400">または直接パスを入力</span>
                     </div>
-                  )}
+                    {formData.coverImagePath && (
+                      <div className="mt-2">
+                        <img
+                          src={formData.coverImagePath}
+                          alt="プレビュー"
+                          className="w-16 h-16 object-cover rounded border border-gray-600"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               
@@ -397,10 +541,22 @@ export default function SongsAdmin() {
                       <div className="flex-1">
                         <div className="flex items-center gap-4 mb-2">
                           <h3 className="text-lg font-semibold">{song.title}</h3>
-                          <span className={`px-2 py-1 text-xs rounded ${
-                            song.visible === 'true' 
-                              ? 'bg-green-600 text-green-100' 
-                              : 'bg-red-600 text-red-100'
+                          {/* 直接トグル可能な表示状態 */}
+                          <button
+                            onClick={() => handleToggleVisibility(song)}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
+                              song.visible === 'true' ? 'bg-green-600' : 'bg-gray-600'
+                            }`}
+                            title={`クリックで${song.visible === 'true' ? '非表示' : '表示'}に切り替え`}
+                          >
+                            <span
+                              className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                                song.visible === 'true' ? 'translate-x-5' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                          <span className={`text-xs ${
+                            song.visible === 'true' ? 'text-green-400' : 'text-red-400'
                           }`}>
                             {song.visible === 'true' ? '表示' : '非表示'}
                           </span>
