@@ -20,6 +20,7 @@ export default function Home() {
   const [backgroundSizes, setBackgroundSizes] = useState<Map<number, number>>(new Map())
   const [playingDarkenedSongs, setPlayingDarkenedSongs] = useState<Set<number>>(new Set())
   const [showingSongInfo, setShowingSongInfo] = useState<number | null>(null)
+  const [isAtBottom, setIsAtBottom] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -62,7 +63,16 @@ export default function Home() {
   // パララックススクロールとウィンドウサイズのイベントリスナー
   useEffect(() => {
     const handleScroll = () => {
-      setScrollY(window.scrollY)
+      const currentScrollY = window.scrollY
+      setScrollY(currentScrollY)
+      
+      // 一番下までスクロールしたかチェック
+      const documentHeight = document.documentElement.scrollHeight
+      const windowHeight = window.innerHeight
+      const scrollBottom = currentScrollY + windowHeight
+      const threshold = 100 // 底から100px以内で判定
+      
+      setIsAtBottom(scrollBottom >= documentHeight - threshold)
     }
 
     const handleResize = () => {
@@ -668,27 +678,51 @@ export default function Home() {
             </div>
             </section>
             
-            {/* ナビゲーションセクション */}
-            <section className="bg-white/90 rounded-lg shadow-md p-6 w-full max-w-3xl mx-auto mt-4">
-              <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
-                <a
-                  href="/license"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-medium text-center min-w-[200px]"
-                >
+            {/* ナビゲーションセクション（表示のみ） */}
+            <section className="bg-transparent p-6 w-full max-w-3xl mx-auto mt-4">
+              <div className="flex flex-col gap-4 justify-center items-center">
+                <div className="bg-transparent text-black px-4 py-2 rounded-lg font-medium text-center min-w-[140px] text-sm">
                   楽曲利用規約はこちら
-                </a>
-                <a
-                  href="/contact"
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors font-medium text-center min-w-[200px]"
-                >
+                </div>
+                <div className="bg-transparent text-black px-4 py-2 rounded-lg font-medium text-center min-w-[140px] text-sm">
                   お問い合わせはこちら
-                </a>
+                </div>
               </div>
             </section>
             </>
           )}
         </div>
       </React.Fragment>
+
+      {/* 最下部スクロール時クリックレイヤー */}
+      <div
+        className="fixed inset-0 w-full h-full flex flex-col items-center justify-center pointer-events-none"
+        style={{
+          zIndex: 300,
+          paddingTop: '350px'
+        }}
+      >
+        {isAtBottom && (
+          <section className="bg-transparent p-6 w-full max-w-3xl mx-auto mt-4 pointer-events-auto">
+            <div className="flex flex-col gap-4 justify-center items-center">
+              <a
+                href="/license"
+                className="bg-transparent hover:bg-black/10 text-transparent px-4 py-2 rounded-lg font-medium text-center min-w-[140px] text-sm cursor-pointer"
+                style={{ position: 'relative', zIndex: 301 }}
+              >
+                楽曲利用規約はこちら
+              </a>
+              <a
+                href="/contact"
+                className="bg-transparent hover:bg-black/10 text-transparent px-4 py-2 rounded-lg font-medium text-center min-w-[140px] text-sm cursor-pointer"
+                style={{ position: 'relative', zIndex: 301 }}
+              >
+                お問い合わせはこちら
+              </a>
+            </div>
+          </section>
+        )}
+      </div>
 
       {/* パララックス背景レイヤー - songs.csvから動的生成 */}
       {songs.map((song, index) => (
