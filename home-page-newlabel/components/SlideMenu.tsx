@@ -30,13 +30,13 @@ export default function SlideMenu({ volume = 0.1, onVolumeChange }: SlideMenuPro
           <input
             type="range"
             min="0"
-            max="1"
+            max="0.4"
             step="0.01"
             value={volume}
             onChange={(e) => onVolumeChange?.(parseFloat(e.target.value))}
             className="w-20 h-1 appearance-none cursor-pointer slider"
             style={{
-              background: `linear-gradient(to right, #000000 0%, #000000 ${volume * 100}%, #000000 ${volume * 100}%, #000000 100%)`,
+              background: `linear-gradient(to right, #000000 0%, #000000 ${(volume / 0.4) * 100}%, #000000 ${(volume / 0.4) * 100}%, #000000 100%)`,
               height: '1px'
             }}
           />

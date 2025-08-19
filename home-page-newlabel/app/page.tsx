@@ -931,36 +931,45 @@ export default function Home() {
 
             {/* 未再生時のdescriptionテキスト（フレーバーテキスト） */}
             <div 
-              className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-white bg-transparent text-right w-2/5 max-w-2/5 pr-2 transition-all duration-1000 ease-out ${
+              className={`absolute right-0 top-3/5 transform -translate-y-3/5 text-white bg-transparent text-right transition-all duration-1000 ease-out ${
                 currentlyPlaying !== parseInt(song.id) && showingSongInfo !== parseInt(song.id)
-                  ? 'opacity-100 transform -translate-y-1/2 translate-x-0' 
-                  : 'opacity-0 transform -translate-y-1/2 translate-x-5'
+                  ? 'opacity-100 transform -translate-y-3/5 translate-x-0' 
+                  : 'opacity-0 transform -translate-y-3/5 translate-x-5'
               }`}
             >
               {song.description && (
-                <p className="text-sm sm:text-lg md:text-xl lg:text-2xl xl:text-3xl font-light drop-shadow-md break-words leading-relaxed italic" style={{ opacity: 0.8 }}>
-                  {song.description}
-                </p>
+                <div className="pl-4 pr-4 py-2" style={{ background: 'linear-gradient(to left, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0))' }}>
+                  <p className="text-sm sm:text-lg md:text-1xl lg:text-2xl xl:text-3xl drop-shadow whitespace-pre-line leading-relaxed" style={{ opacity: 1 }}>
+                    {song.description.replace(/\/n/g, '\n')}
+                  </p>
+                </div>
               )}
             </div>
 
             {/* 再生中の楽曲情報表示（フィルター影響外） */}
             <div 
-              className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-white bg-transparent text-right w-2/5 max-w-2/5 pr-2 transition-all duration-1000 ease-out ${
+              className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-white bg-transparent text-right pr-2 transition-all duration-1000 ease-out ${
                 showingSongInfo === parseInt(song.id) 
                   ? 'opacity-100 transform -translate-y-1/2 translate-x-0' 
                   : 'opacity-0 transform -translate-y-1/2 translate-x-5'
               }`}
             >
-              <h3 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-bold mb-2 md:mb-4 drop-shadow-lg break-words leading-tight">
-                {song.title}
-              </h3>
-              <p className="text-lg sm:text-2xl md:text-3xl lg:text-5xl xl:text-7xl font-medium mb-2 md:mb-4 drop-shadow-md break-words leading-tight" style={{ opacity: 0.9 }}>
-                {song.genre}
+              <div className="overflow-hidden mb-2 md:mb-4">
+                <h3 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-bold drop-shadow-lg leading-tight break-words overflow-hidden" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', hyphens: 'auto' }}>
+                  {song.title.replace(/\/n/g, '\n')}
+                </h3>
+              </div>
+              <p className="text-lg sm:text-2xl md:text-3xl lg:text-5xl xl:text-7xl font-medium mb-2 md:mb-4 drop-shadow-md break-words leading-tight whitespace-pre-line" style={{ opacity: 0.9 }}>
+                {song.genre.replace(/\/n/g, '\n')}
               </p>
-              <p className="text-sm sm:text-lg md:text-xl lg:text-2xl xl:text-4xl font-normal drop-shadow-md break-words leading-tight" style={{ opacity: 0.75 }}>
+              <p className="text-sm sm:text-lg md:text-xl lg:text-2xl xl:text-4xl font-normal drop-shadow-md break-words leading-tight" style={{ opacity: 0.8 }}>
                 {song.releaseDate}
               </p>
+              {song.originalTracks && (
+                <p className="text-xs sm:text-sm md:text-lg lg:text-xl xl:text-3xl font-semibold drop-shadow-md break-words leading-tight whitespace-pre-line" style={{ opacity: 0.8 }}>
+                  {song.originalTracks.replace(/\/n/g, '\n')}
+                </p>
+              )}
             </div>
           </div>
           
