@@ -12,6 +12,17 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 }
 
+// デバッグ用ログ
+console.log('🔥 Firebase Config Debug:', {
+  apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'NOT SET',
+  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId,
+  storageBucket: firebaseConfig.storageBucket,
+  messagingSenderId: firebaseConfig.messagingSenderId,
+  appId: firebaseConfig.appId ? `${firebaseConfig.appId.substring(0, 20)}...` : 'NOT SET',
+  measurementId: firebaseConfig.measurementId
+})
+
 // Firebase初期化
 const app = initializeApp(firebaseConfig)
 
