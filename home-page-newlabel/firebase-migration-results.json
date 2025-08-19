@@ -1,0 +1,87 @@
+{
+  "migrationDate": "2025-08-19T05:33:36.167Z",
+  "totalFiles": 13,
+  "successfulUploads": 13,
+  "failedUploads": 0,
+  "totalSize": 310012031,
+  "files": [
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/audio/02_Eat_up_my_HEART.wav",
+      "remotePath": "audio/02_Eat_up_my_HEART.wav",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/audio%2F02_Eat_up_my_HEART.wav?alt=media&token=320c0c49-1fe1-44b5-a225-b6a20dd52efd",
+      "size": 52146834
+    },
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/audio/03_bentra_bentra.wav",
+      "remotePath": "audio/03_bentra_bentra.wav",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/audio%2F03_bentra_bentra.wav?alt=media&token=79f604eb-2dc6-468c-bd81-e7b731cf3dee",
+      "size": 63856768
+    },
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/audio/04_13th.wav",
+      "remotePath": "audio/04_13th.wav",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/audio%2F04_13th.wav?alt=media&token=5db2d44d-67a7-489f-a4cd-993c4a656d5b",
+      "size": 54504400
+    },
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/audio/05_unrevertable.wav",
+      "remotePath": "audio/05_unrevertable.wav",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/audio%2F05_unrevertable.wav?alt=media&token=506ff0f1-2f20-4cef-b293-365aa22b2869",
+      "size": 55209772
+    },
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/audio/06_KEGAREWOMATOITE_KAGOMEKAGOME.wav",
+      "remotePath": "audio/06_KEGAREWOMATOITE_KAGOMEKAGOME.wav",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/audio%2F06_KEGAREWOMATOITE_KAGOMEKAGOME.wav?alt=media&token=3772207c-344d-4988-b36d-97b1bd398d5e",
+      "size": 37746080
+    },
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/audio/noiseOK_askey_Vocaloid_happy_ending_theme_4424_rec01_premaster01.wav",
+      "remotePath": "audio/noiseOK_askey_Vocaloid_happy_ending_theme_4424_rec01_premaster01.wav",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/audio%2FnoiseOK_askey_Vocaloid_happy_ending_theme_4424_rec01_premaster01.wav?alt=media&token=562f9d55-f090-4241-a63c-6d22a43ec995",
+      "size": 42866336
+    },
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/images/covers/42.jpg",
+      "remotePath": "images/covers/42.jpg",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/images%2Fcovers%2F42.jpg?alt=media&token=c67c3962-a1cd-4a67-ab69-677ec85b7bb5",
+      "size": 658677
+    },
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/images/covers/alien.jpg",
+      "remotePath": "images/covers/alien.jpg",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/images%2Fcovers%2Falien.jpg?alt=media&token=f908120c-558d-4319-b4c9-d5518413fa80",
+      "size": 1230332
+    },
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/images/covers/extra.jpg",
+      "remotePath": "images/covers/extra.jpg",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/images%2Fcovers%2Fextra.jpg?alt=media&token=91c3efc0-168d-4438-96b5-5760591904da",
+      "size": 862520
+    },
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/images/covers/new.jpg",
+      "remotePath": "images/covers/new.jpg",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/images%2Fcovers%2Fnew.jpg?alt=media&token=b243849c-8328-4797-a395-93582e8f6ac7",
+      "size": 634340
+    },
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/images/icon.jpg",
+      "remotePath": "images/icon.jpg",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/images%2Ficon.jpg?alt=media&token=ca984968-a369-4d4b-9e03-90799cb00c3b",
+      "size": 56143
+    },
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/images/newlabel_logo.png",
+      "remotePath": "images/newlabel_logo.png",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/images%2Fnewlabel_logo.png?alt=media&token=dca27a8f-6031-4a43-9f0f-b44784e27d11",
+      "size": 190501
+    },
+    {
+      "localPath": "/workspaces/home-page-newlabel/home-page-newlabel/public/images/newlabel_logotrim.png",
+      "remotePath": "images/newlabel_logotrim.png",
+      "downloadURL": "https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/images%2Fnewlabel_logotrim.png?alt=media&token=d788fbcc-3780-4e8f-ba3a-edd63e03f5c7",
+      "size": 49328
+    }
+  ]
+}

@@ -409,7 +409,7 @@ export default function SongsAdmin() {
                       name="audioPath"
                       value={formData.audioPath}
                       onChange={handleInputChange}
-                      placeholder="/audio/filename.wav"
+                      placeholder="Firebase Storage URLまたは/audio/filename.wav"
                       className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
                     />
                     <div className="flex items-center gap-2">
@@ -444,7 +444,7 @@ export default function SongsAdmin() {
                       name="coverImagePath"
                       value={formData.coverImagePath}
                       onChange={handleInputChange}
-                      placeholder="/images/covers/filename.jpg"
+                      placeholder="Firebase Storage URLまたは/images/covers/filename.jpg"
                       className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
                     />
                     <div className="flex items-center gap-2">

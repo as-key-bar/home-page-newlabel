@@ -57,12 +57,12 @@ export default function SongCard({ song }: SongCardProps) {
 
   // 音源ファイルのパスを取得
   const getAudioPath = () => {
-    return song.audioPath || '/audio/noiseOK_askey_Vocaloid_happy_ending_theme_4424_rec01_premaster01.wav'
+    return song.audioPath || 'https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/audio%2FnoiseOK_askey_Vocaloid_happy_ending_theme_4424_rec01_premaster01.wav?alt=media&token=562f9d55-f090-4241-a63c-6d22a43ec995'
   }
 
   // ジャケット画像のパスを取得
   const getCoverImagePath = () => {
-    return song.coverImagePath || '/images/covers/42.jpg'
+    return song.coverImagePath || 'https://firebasestorage.googleapis.com/v0/b/home-page-newlabel.firebasestorage.app/o/images%2Fcovers%2F42.jpg?alt=media&token=c67c3962-a1cd-4a67-ab69-677ec85b7bb5'
   }
   return (
     <div 
