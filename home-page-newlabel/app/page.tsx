@@ -24,6 +24,7 @@ export default function Home() {
   const [showingSongInfo, setShowingSongInfo] = useState<number | null>(null)
   const [isAtBottom, setIsAtBottom] = useState(false)
   const [showInitialLoading, setShowInitialLoading] = useState(true)
+  const [volume, setVolume] = useState(0.05) // 初期値10%
 
   // サイト内遷移の検知
   useEffect(() => {
@@ -175,6 +176,13 @@ export default function Home() {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [currentlyPlaying, audioRef, backgroundSizes])
+
+  // 音量変更時に現在再生中の音楽の音量を更新
+  useEffect(() => {
+    if (audioRef) {
+      audioRef.volume = volume
+    }
+  }, [volume, audioRef])
 
   // レスポンシブ対応のスペーサー高さ計算関数
   const getResponsiveSpacerHeight = () => {
@@ -361,6 +369,8 @@ export default function Home() {
 
     // 音楽再生準備
     const audio = new Audio(song.audioPath)
+    // 音量を設定
+    audio.volume = volume
     
     // アニメーション開始と同時に音楽再生
     setTimeout(() => {
@@ -505,7 +515,7 @@ export default function Home() {
       </div>
 
       {/* スライドメニュー */}
-      <SlideMenu />
+      <SlideMenu volume={volume} onVolumeChange={setVolume} />
 
       {/* ヘッダーパララックスレイヤー - ロゴ背景 */}
       <React.Fragment key="header-parallax">
@@ -919,7 +929,22 @@ export default function Home() {
               </div>
             </div>
 
-            {/* 楽曲情報表示（フィルター影響外） */}
+            {/* 未再生時のdescriptionテキスト（フレーバーテキスト） */}
+            <div 
+              className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-white bg-transparent text-right w-2/5 max-w-2/5 pr-2 transition-all duration-1000 ease-out ${
+                currentlyPlaying !== parseInt(song.id) && showingSongInfo !== parseInt(song.id)
+                  ? 'opacity-100 transform -translate-y-1/2 translate-x-0' 
+                  : 'opacity-0 transform -translate-y-1/2 translate-x-5'
+              }`}
+            >
+              {song.description && (
+                <p className="text-sm sm:text-lg md:text-xl lg:text-2xl xl:text-3xl font-light drop-shadow-md break-words leading-relaxed italic" style={{ opacity: 0.8 }}>
+                  {song.description}
+                </p>
+              )}
+            </div>
+
+            {/* 再生中の楽曲情報表示（フィルター影響外） */}
             <div 
               className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-white bg-transparent text-right w-2/5 max-w-2/5 pr-2 transition-all duration-1000 ease-out ${
                 showingSongInfo === parseInt(song.id) 
