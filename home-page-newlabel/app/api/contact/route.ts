@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import nodemailer from 'nodemailer'
 
-// 軽量なメール送信機能（nodemailer不使用）
+// Gmail SMTPを使用したメール送信機能
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -26,9 +27,11 @@ export async function POST(request: NextRequest) {
     // 環境変数チェック
     console.log('Environment variables check:')
     console.log('ADMIN_EMAIL:', process.env.ADMIN_EMAIL ? '✓ Set' : '✗ Missing')
+    console.log('GMAIL_USER:', process.env.GMAIL_USER ? '✓ Set' : '✗ Missing')
+    console.log('GMAIL_APP_PASSWORD:', process.env.GMAIL_APP_PASSWORD ? '✓ Set' : '✗ Missing')
     
-    if (!process.env.ADMIN_EMAIL) {
-      console.error('Admin email configuration missing')
+    if (!process.env.ADMIN_EMAIL || !process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.error('Gmail configuration missing')
       return NextResponse.json(
         { error: 'メール設定に問題があります。管理者にお問い合わせください。' },
         { status: 500 }
@@ -64,6 +67,100 @@ export async function POST(request: NextRequest) {
     console.log(`🔗 Referer: ${contactData.referer}`)
     console.log(`💻 User-Agent: ${contactData.userAgent}`)
     console.log('='.repeat(50))
+
+    // Gmail SMTP設定
+    console.log('📧 Setting up Gmail transporter...')
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD
+      }
+    })
+
+    // メール送信
+    try {
+      console.log('📤 Sending emails via Gmail SMTP...')
+      
+      const fromName = process.env.FROM_NAME || '.new label'
+      const websiteUrl = process.env.WEBSITE_URL || 'https://newlabel.com'
+
+      // 管理者向けメール
+      const adminMailOptions = {
+        from: `"${fromName}" <${process.env.GMAIL_USER}>`,
+        to: process.env.ADMIN_EMAIL,
+        subject: `[お問い合わせ] ${subject}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px;">
+            <h2 style="color: #333;">新しいお問い合わせが届きました</h2>
+            <hr style="border: none; height: 2px; background-color: #eee; margin: 20px 0;">
+            
+            <div style="background-color: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px;">
+              <h3 style="margin-top: 0; color: #495057;">お問い合わせ内容</h3>
+              <p><strong>お名前:</strong> ${name}</p>
+              <p><strong>メールアドレス:</strong> ${email}</p>
+              <p><strong>お問い合わせ種別:</strong> ${subject}</p>
+              <p><strong>内容:</strong></p>
+              <div style="background-color: white; padding: 15px; border-radius: 4px; white-space: pre-wrap;">
+${message}
+              </div>
+            </div>
+            
+            <hr style="border: none; height: 1px; background-color: #eee; margin: 30px 0;">
+            <p style="font-size: 12px; color: #666;">
+              <strong>送信日時:</strong> ${contactData.timestampJST}<br>
+              <strong>IPアドレス:</strong> ${contactData.ip}<br>
+              <strong>User-Agent:</strong> ${contactData.userAgent}<br>
+              <strong>リファラー:</strong> ${contactData.referer}
+            </p>
+          </div>
+        `
+      }
+
+      // 自動返信メール
+      const autoReplyMailOptions = {
+        from: `"${fromName}" <${process.env.GMAIL_USER}>`,
+        to: email,
+        subject: 'お問い合わせありがとうございます',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px;">
+            <h2 style="color: #333;">${name} 様</h2>
+            <p>この度は .new label にお問い合わせいただき、ありがとうございます。</p>
+            
+            <div style="background-color: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px;">
+              <h3 style="margin-top: 0; color: #495057;">お問い合わせ内容</h3>
+              <p><strong>お問い合わせ種別:</strong> ${subject}</p>
+              <p><strong>内容:</strong></p>
+              <div style="background-color: white; padding: 15px; border-radius: 4px; white-space: pre-wrap;">
+${message}
+              </div>
+            </div>
+            
+            <p>内容を確認後、2-3営業日以内にご連絡いたします。</p>
+            <p>しばらくお待ちください。</p>
+            
+            <hr style="border: none; height: 1px; background-color: #eee; margin: 30px 0;">
+            <p style="font-size: 14px; color: #6c757d;">
+              <strong>.new label</strong><br>
+              <a href="${websiteUrl}" style="color: #007bff; text-decoration: none;">${websiteUrl}</a>
+            </p>
+          </div>
+        `
+      }
+
+      // メール送信実行
+      console.log('📧 Sending admin notification...')
+      await transporter.sendMail(adminMailOptions)
+      console.log('✅ Admin email sent successfully')
+      
+      console.log('📧 Sending auto-reply...')
+      await transporter.sendMail(autoReplyMailOptions)
+      console.log('✅ Auto-reply email sent successfully')
+      
+    } catch (emailError) {
+      console.error('❌ Gmail SMTP error:', emailError)
+      // メール送信エラーでも処理を継続（他の通知方法を試すため）
+    }
 
     // 複数の通知方法を試行
     const notifications = []

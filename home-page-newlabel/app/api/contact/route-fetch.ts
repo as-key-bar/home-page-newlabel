@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'お問い合わせの処理中にエラーが発生しました。しばらく後でお試しください。' },
+      { error: 'お問い合わせの処理中にエラーが発生しました。しばらく後でお試しください。!!!!' },
       { status: 500 }
     )
   }
