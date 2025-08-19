@@ -87,11 +87,17 @@ export async function POST(request: NextRequest) {
     
     // 新しいIDを生成（最大ID + 1）
     const maxId = Math.max(...records.map(r => parseInt(r.id) || 0), 0)
-    // 新しい表示順を生成（最大表示順 + 1）
-    const maxOrder = Math.max(...records.map(r => parseInt(r.楽曲表示順) || 0), 0)
+    
+    // 既存楽曲の表示順を1つずつ下げる
+    records.forEach(record => {
+      const currentOrder = parseInt(record.楽曲表示順) || 0
+      record.楽曲表示順 = (currentOrder + 1).toString()
+    })
+    
+    // 新しい楽曲を最上位（表示順=1）に設定
     const song: Song = {
       id: (maxId + 1).toString(),
-      楽曲表示順: (maxOrder + 1).toString(),
+      楽曲表示順: '1',
       ...newSong
     }
     
@@ -183,19 +189,30 @@ export async function DELETE(request: NextRequest) {
       trim: true
     })
     
-    // 対象の楽曲を見つけて削除
-    const initialLength = records.length
-    const filteredRecords = records.filter(r => r.id !== id)
-    
-    if (filteredRecords.length === initialLength) {
+    // 削除対象の楽曲を見つける
+    const targetSong = records.find(r => r.id === id)
+    if (!targetSong) {
       return NextResponse.json(
         { error: '指定された楽曲が見つかりません' },
         { status: 404 }
       )
     }
     
+    const deletedOrder = parseInt(targetSong.楽曲表示順) || 0
+    
+    // 楽曲を削除
+    const filteredRecords = records.filter(r => r.id !== id)
+    
+    // 削除された楽曲より下位の楽曲の表示順を1つずつ上げる
+    filteredRecords.forEach(record => {
+      const currentOrder = parseInt(record.楽曲表示順) || 0
+      if (currentOrder > deletedOrder) {
+        record.楽曲表示順 = (currentOrder - 1).toString()
+      }
+    })
+    
     // CSVを再構築
-    const header = 'id,title,releaseDate,genre,description,originalTracks,audioPath,coverImagePath,visible'
+    const header = 'id,楽曲表示順,title,releaseDate,genre,description,originalTracks,audioPath,coverImagePath,visible'
     const csvRows = filteredRecords.map(songToCSVRow)
     const newCsvContent = [header, ...csvRows].join('\n') + '\n'
     

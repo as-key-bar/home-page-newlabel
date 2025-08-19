@@ -160,6 +160,13 @@ export default function SongsAdmin() {
     
     clearMessages()
     
+    // 削除中は楽曲を視覚的に無効化
+    setSongs(prevSongs => 
+      prevSongs.map(song => 
+        song.id === id ? { ...song, _deleting: true } : song
+      )
+    )
+    
     try {
       const response = await fetch(`/api/songs?id=${id}`, {
         method: 'DELETE'
@@ -167,11 +174,18 @@ export default function SongsAdmin() {
       
       if (!response.ok) {
         const errorData = await response.json()
+        // エラー時は_deletingフラグを削除
+        setSongs(prevSongs => 
+          prevSongs.map(song => 
+            song.id === id ? { ...song, _deleting: false } : song
+          )
+        )
         throw new Error(errorData.error || '楽曲の削除に失敗しました')
       }
       
+      // 削除成功時は即座にUIから楽曲を削除
+      setSongs(prevSongs => prevSongs.filter(song => song.id !== id))
       setSuccessMessage('楽曲が正常に削除されました')
-      fetchSongs()
     } catch (err) {
       setError(err instanceof Error ? err.message : '楽曲の削除に失敗しました')
     }
@@ -617,7 +631,9 @@ export default function SongsAdmin() {
           ) : (
             <div className="grid gap-4">
               {songs.map((song) => (
-                <div key={song.id} className="p-4 bg-gray-900 rounded-lg">
+                <div key={song.id} className={`p-4 bg-gray-900 rounded-lg transition-all duration-200 ${
+                  (song as any)._deleting ? 'opacity-50 pointer-events-none bg-red-900' : ''
+                }`}>
                   <div className="flex justify-between items-start">
                     <div className="flex gap-4 flex-1">
                       {/* サムネイル */}
@@ -722,9 +738,14 @@ export default function SongsAdmin() {
                         </button>
                         <button
                           onClick={() => handleDelete(song.id)}
-                          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-sm rounded transition-colors"
+                          disabled={(song as any)._deleting}
+                          className={`px-3 py-1 text-sm rounded transition-colors ${
+                            (song as any)._deleting 
+                              ? 'bg-gray-600 cursor-not-allowed' 
+                              : 'bg-red-600 hover:bg-red-700'
+                          }`}
                         >
-                          削除
+                          {(song as any)._deleting ? '削除中...' : '削除'}
                         </button>
                       </div>
                     </div>
