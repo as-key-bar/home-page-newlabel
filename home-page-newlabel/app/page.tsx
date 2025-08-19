@@ -988,7 +988,7 @@ export default function Home() {
             <div key={`spacer-${index}`} className="h-[70vh] md:h-[75vh] lg:h-[100vh]"></div>
           ))}
           <div key={`spacer-offset`} className="h-[100vh] md:h-[100vh] lg:h-[100vh]"></div>
-          <div key={`spacer-offset`} className="h-[150vh] md:h-[150vh] lg:h-[100vh]"></div>
+          <div key={`spacer-offset`} className="h-[250vh] md:h-[150vh] lg:h-[100vh]"></div>
           
 
         </div>
