@@ -56,7 +56,7 @@ export async function GET() {
     })
     
     // 楽曲表示順でソート（数値として比較）
-    const sortedRecords = records.sort((a: Song, b: Song) => {
+    const sortedRecords = (records as Song[]).sort((a: Song, b: Song) => {
       const orderA = parseInt(a.楽曲表示順) || 0
       const orderB = parseInt(b.楽曲表示順) || 0
       return orderA - orderB
