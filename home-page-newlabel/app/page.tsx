@@ -497,7 +497,7 @@ export default function Home() {
                 borderTop: '4px solid transparent',
                 borderBottom: '4px solid transparent',
                 borderRight: '6px solid white',
-                marginBottom: '275px'
+                marginBottom: '272px'
               }}
             />
           ))}
