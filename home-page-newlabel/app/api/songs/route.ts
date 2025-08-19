@@ -7,6 +7,7 @@ const CSV_PATH = path.join(process.cwd(), '../data/songs.csv')
 
 export interface Song {
   id: string
+  楽曲表示順: string
   title: string
   releaseDate: string
   genre: string
@@ -32,6 +33,7 @@ function escapeCSVField(field: string): string {
 function songToCSVRow(song: Song): string {
   return [
     song.id,
+    song.楽曲表示順,
     escapeCSVField(song.title),
     escapeCSVField(song.releaseDate),
     escapeCSVField(song.genre),
@@ -53,7 +55,14 @@ export async function GET() {
       trim: true
     })
     
-    return NextResponse.json({ songs: records })
+    // 楽曲表示順でソート（数値として比較）
+    const sortedRecords = records.sort((a: Song, b: Song) => {
+      const orderA = parseInt(a.楽曲表示順) || 0
+      const orderB = parseInt(b.楽曲表示順) || 0
+      return orderA - orderB
+    })
+    
+    return NextResponse.json({ songs: sortedRecords })
   } catch (error) {
     console.error('Error reading CSV file:', error)
     return NextResponse.json(
@@ -78,8 +87,11 @@ export async function POST(request: NextRequest) {
     
     // 新しいIDを生成（最大ID + 1）
     const maxId = Math.max(...records.map(r => parseInt(r.id) || 0), 0)
+    // 新しい表示順を生成（最大表示順 + 1）
+    const maxOrder = Math.max(...records.map(r => parseInt(r.楽曲表示順) || 0), 0)
     const song: Song = {
       id: (maxId + 1).toString(),
+      楽曲表示順: (maxOrder + 1).toString(),
       ...newSong
     }
     
@@ -87,7 +99,7 @@ export async function POST(request: NextRequest) {
     records.push(song)
     
     // CSVを再構築
-    const header = 'id,title,releaseDate,genre,description,originalTracks,audioPath,coverImagePath,visible'
+    const header = 'id,楽曲表示順,title,releaseDate,genre,description,originalTracks,audioPath,coverImagePath,visible'
     const csvRows = records.map(songToCSVRow)
     const newCsvContent = [header, ...csvRows].join('\n') + '\n'
     
@@ -131,7 +143,7 @@ export async function PUT(request: NextRequest) {
     records[index] = updatedSong
     
     // CSVを再構築
-    const header = 'id,title,releaseDate,genre,description,originalTracks,audioPath,coverImagePath,visible'
+    const header = 'id,楽曲表示順,title,releaseDate,genre,description,originalTracks,audioPath,coverImagePath,visible'
     const csvRows = records.map(songToCSVRow)
     const newCsvContent = [header, ...csvRows].join('\n') + '\n'
     

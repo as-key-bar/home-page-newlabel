@@ -205,6 +205,29 @@ export default function SongsAdmin() {
     }
   }
 
+  // 表示順変更
+  const handleReorder = async (songId: string, action: 'up' | 'down' | 'top' | 'bottom') => {
+    clearMessages()
+    
+    try {
+      const response = await fetch('/api/songs/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: songId, action })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '表示順の変更に失敗しました')
+      }
+      
+      setSuccessMessage('表示順が正常に変更されました')
+      fetchSongs()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '表示順の変更に失敗しました')
+    }
+  }
+
   // フォーム入力の処理
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -639,6 +662,7 @@ export default function SongsAdmin() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm text-gray-400">
                           <div>ID: {song.id}</div>
+                          <div>表示順: {song.楽曲表示順}</div>
                           <div>ジャンル: {song.genre}</div>
                           <div>リリース: {song.releaseDate}</div>
                           {song.description && <div className="md:col-span-2 lg:col-span-3">説明: {song.description}</div>}
@@ -649,25 +673,60 @@ export default function SongsAdmin() {
                       </div>
                     </div>
                     
-                    <div className="flex gap-2 ml-4">
-                      <button
-                        onClick={() => startEdit(song)}
-                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-sm rounded transition-colors"
-                      >
-                        編集
-                      </button>
-                      <button
-                        onClick={() => startDuplicate(song)}
-                        className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-sm rounded transition-colors"
-                      >
-                        複製
-                      </button>
-                      <button
-                        onClick={() => handleDelete(song.id)}
-                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-sm rounded transition-colors"
-                      >
-                        削除
-                      </button>
+                    <div className="flex flex-col gap-2 ml-4">
+                      {/* 表示順操作ボタン */}
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleReorder(song.id, 'top')}
+                          className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
+                          title="最上位に移動"
+                        >
+                          ↑↑
+                        </button>
+                        <button
+                          onClick={() => handleReorder(song.id, 'up')}
+                          className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
+                          title="上に移動"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          onClick={() => handleReorder(song.id, 'down')}
+                          className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
+                          title="下に移動"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          onClick={() => handleReorder(song.id, 'bottom')}
+                          className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
+                          title="最下位に移動"
+                        >
+                          ↓↓
+                        </button>
+                      </div>
+                      
+                      {/* 基本操作ボタン */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => startEdit(song)}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-sm rounded transition-colors"
+                        >
+                          編集
+                        </button>
+                        <button
+                          onClick={() => startDuplicate(song)}
+                          className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-sm rounded transition-colors"
+                        >
+                          複製
+                        </button>
+                        <button
+                          onClick={() => handleDelete(song.id)}
+                          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-sm rounded transition-colors"
+                        >
+                          削除
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
