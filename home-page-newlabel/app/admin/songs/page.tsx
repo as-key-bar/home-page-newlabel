@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { Song } from '../../api/songs/route'
+import AuthGuard from '../../../components/AuthGuard'
+import { useAuth } from '../../../contexts/AuthContext'
 
 export default function SongsAdmin() {
+  const { user, logout } = useAuth()
   const [songs, setSongs] = useState<Song[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -290,9 +293,23 @@ export default function SongsAdmin() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">楽曲管理</h1>
+    <AuthGuard>
+      <div className="min-h-screen bg-black text-white p-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold">楽曲管理</h1>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-400">
+                ログイン中: {user?.email}
+              </span>
+              <button
+                onClick={logout}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors text-sm"
+              >
+                ログアウト
+              </button>
+            </div>
+          </div>
         
         {/* メッセージ表示 */}
         {error && (
@@ -600,7 +617,8 @@ export default function SongsAdmin() {
             </div>
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </AuthGuard>
   )
 }

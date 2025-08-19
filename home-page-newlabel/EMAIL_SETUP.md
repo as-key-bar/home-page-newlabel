@@ -20,6 +20,7 @@ GMAIL_APP_PASSWORD=orlpcpaluhfeiaib
 ```typescript
 import nodemailer from 'nodemailer'
 
+
 // メール送信処理を追加
 const transporter = nodemailer.createTransporter({
   service: 'gmail',
