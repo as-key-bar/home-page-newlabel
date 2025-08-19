@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { initializeApp } from 'firebase/app'
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+
+// Firebase設定
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+}
+
+const app = initializeApp(firebaseConfig)
+const storage = getStorage(app)
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,30 +46,24 @@ export async function POST(request: NextRequest) {
     
     // ファイル名を安全な形式に変換
     const timestamp = Date.now()
-    const fileExtension = path.extname(file.name)
+    const fileExtension = file.name.split('.').pop() || ''
     const safeName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
     
-    // 保存先ディレクトリを確保
-    const uploadDir = path.join(process.cwd(), 'public', 'images', 'covers')
-    try {
-      await mkdir(uploadDir, { recursive: true })
-    } catch (error) {
-      // ディレクトリが既に存在する場合は無視
-    }
-    
-    // ファイルを保存
-    const filePath = path.join(uploadDir, safeName)
+    // Firebase Storageにアップロード
+    const storageRef = ref(storage, `images/covers/${safeName}`)
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
     
-    await writeFile(filePath, buffer)
+    const snapshot = await uploadBytes(storageRef, buffer, {
+      contentType: file.type
+    })
     
-    // 公開パスを生成
-    const publicPath = `/images/covers/${safeName}`
+    // ダウンロードURLを取得
+    const downloadURL = await getDownloadURL(snapshot.ref)
     
     return NextResponse.json({
       message: '画像が正常にアップロードされました',
-      filePath: publicPath,
+      filePath: downloadURL,
       fileName: safeName,
       originalName: file.name,
       size: file.size,

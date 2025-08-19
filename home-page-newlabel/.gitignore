@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Firebase
+firebase-debug.log*
+.firebase/
+firebase-upload-results.json
+
+# Development scripts
+scripts/upload-to-firebase.js
+
+# Documentation (temporary)
+FIREBASE_SETUP_GUIDE.md
+MIGRATION_CHECKLIST.md
+STORAGE_SERVICE_COMPARISON.md
