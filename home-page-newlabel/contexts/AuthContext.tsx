@@ -40,9 +40,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider()
     try {
+      console.log('Firebase Auth configuration:', {
+        apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? 'SET' : 'NOT SET',
+        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+      })
       await signInWithPopup(auth, provider)
     } catch (error) {
       console.error('Sign in error:', error)
+      console.error('Error code:', (error as any).code)
+      console.error('Error message:', (error as any).message)
       throw error
     }
   }
