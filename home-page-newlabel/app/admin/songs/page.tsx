@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { Song } from '../../api/songs/route'
 import AuthGuard from '../../../components/AuthGuard'
 import { useAuth } from '../../../contexts/AuthContext'
+import { storage } from '../../../lib/firebase'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 export default function SongsAdmin() {
   const { user, logout } = useAuth()
@@ -214,33 +216,58 @@ export default function SongsAdmin() {
     setFormData(prev => ({ ...prev, visible: prev.visible === 'true' ? 'false' : 'true' }))
   }
 
-  // 画像アップロード
+  // 画像アップロード（Firebase Storage直接）
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    // ファイルサイズチェック
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
+    if (file.size > MAX_IMAGE_SIZE) {
+      setError('画像ファイルサイズが大きすぎます（最大5MB）')
+      return
+    }
+
+    // ファイル形式チェック
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      setError('対応していない画像形式です（JPEG, PNG, GIF, WebPのみ）')
+      return
+    }
 
     setUploadingImage(true)
     clearMessages()
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const response = await fetch('/api/upload/images', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '画像のアップロードに失敗しました')
+      // Firebase認証状態を確認
+      if (!user) {
+        throw new Error('認証が必要です')
       }
 
-      const result = await response.json()
-      setFormData(prev => ({ ...prev, coverImagePath: result.filePath }))
+      // ファイル名を安全な形式に変換
+      const timestamp = Date.now()
+      const safeName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+      
+      console.log(`🔥 Firebase Storageアップロード開始: images/covers/${safeName}`)
+      
+      // Firebase Storageにアップロード
+      const storageRef = ref(storage, `images/covers/${safeName}`)
+      const uploadResult = await uploadBytes(storageRef, file)
+      
+      console.log(`📤 アップロード完了、URL取得中...`)
+      const downloadURL = await getDownloadURL(uploadResult.ref)
+      
+      console.log(`✅ ダウンロードURL取得完了: ${downloadURL}`)
+      
+      setFormData(prev => ({ ...prev, coverImagePath: downloadURL }))
       setSuccessMessage('画像が正常にアップロードされました')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '画像のアップロードに失敗しました')
+      console.error('Image upload error:', err)
+      if (err instanceof Error && err.message.includes('storage/unauthorized')) {
+        setError('アップロード権限がありません。管理者としてログインしていることを確認してください。')
+      } else {
+        setError(err instanceof Error ? err.message : '画像のアップロードに失敗しました')
+      }
     } finally {
       setUploadingImage(false)
       // ファイル入力をリセット
@@ -248,33 +275,64 @@ export default function SongsAdmin() {
     }
   }
 
-  // 音声アップロード
+  // 音声アップロード（Firebase Storage直接）
   const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    // ファイルサイズチェック
+    const MAX_AUDIO_SIZE = 50 * 1024 * 1024 // 50MB
+    if (file.size > MAX_AUDIO_SIZE) {
+      setError('音声ファイルサイズが大きすぎます（最大50MB）')
+      return
+    }
+
+    // ファイル形式チェック
+    const allowedTypes = [
+      'audio/wav', 'audio/wave', 'audio/x-wav',
+      'audio/mp3', 'audio/mpeg',
+      'audio/flac', 'audio/x-flac',
+      'audio/aac', 'audio/mp4',
+      'audio/ogg', 'audio/vorbis'
+    ]
+    if (!allowedTypes.includes(file.type)) {
+      setError('対応していない音声形式です（WAV, MP3, FLAC, AAC, OGGのみ）')
+      return
+    }
 
     setUploadingAudio(true)
     clearMessages()
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const response = await fetch('/api/upload/audio', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '音声ファイルのアップロードに失敗しました')
+      // Firebase認証状態を確認
+      if (!user) {
+        throw new Error('認証が必要です')
       }
 
-      const result = await response.json()
-      setFormData(prev => ({ ...prev, audioPath: result.filePath }))
+      // ファイル名を安全な形式に変換
+      const timestamp = Date.now()
+      const safeName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+      
+      console.log(`🔥 Firebase Storageアップロード開始: audio/${safeName}`)
+      
+      // Firebase Storageにアップロード
+      const storageRef = ref(storage, `audio/${safeName}`)
+      const uploadResult = await uploadBytes(storageRef, file)
+      
+      console.log(`📤 アップロード完了、URL取得中...`)
+      const downloadURL = await getDownloadURL(uploadResult.ref)
+      
+      console.log(`✅ ダウンロードURL取得完了: ${downloadURL}`)
+      
+      setFormData(prev => ({ ...prev, audioPath: downloadURL }))
       setSuccessMessage('音声ファイルが正常にアップロードされました')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '音声ファイルのアップロードに失敗しました')
+      console.error('Audio upload error:', err)
+      if (err instanceof Error && err.message.includes('storage/unauthorized')) {
+        setError('アップロード権限がありません。管理者としてログインしていることを確認してください。')
+      } else {
+        setError(err instanceof Error ? err.message : '音声ファイルのアップロードに失敗しました')
+      }
     } finally {
       setUploadingAudio(false)
       // ファイル入力をリセット
