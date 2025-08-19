@@ -97,8 +97,8 @@ export async function POST(request: NextRequest) {
     // 新しい楽曲を最上位（表示順=1）に設定
     const song: Song = {
       id: (maxId + 1).toString(),
-      楽曲表示順: '1',
-      ...newSong
+      ...newSong,
+      楽曲表示順: '1'
     }
     
     // 新しい行を追加
