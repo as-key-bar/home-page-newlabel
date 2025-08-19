@@ -52,3 +52,6 @@ scripts/upload-to-firebase.js
 FIREBASE_SETUP_GUIDE.md
 MIGRATION_CHECKLIST.md
 STORAGE_SERVICE_COMPARISON.md
+
+# Data files
+../data/songs.csv
