@@ -685,7 +685,7 @@ export default function SongsAdmin() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm text-gray-400">
                           <div>ID: {song.id}</div>
-                          <div>表示順: {song.楽曲表示順}</div>
+                          <div>表示順: {song.order}</div>
                           <div>ジャンル: {song.genre}</div>
                           <div>リリース: {song.releaseDate}</div>
                           {song.description && <div className="md:col-span-2 lg:col-span-3">説明: {song.description}</div>}
