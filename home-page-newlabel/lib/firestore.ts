@@ -119,11 +119,12 @@ export async function getSong(id: string): Promise<Song | null> {
       return null
     }
     
+    const data = snapshot.data()
     return {
-      ...snapshot.data(),
+      ...data,
       id: snapshot.id,
-      createdAt: snapshot.data().createdAt?.toDate(),
-      updatedAt: snapshot.data().updatedAt?.toDate(),
+      createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+      updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
     } as Song
   } catch (error) {
     console.error('楽曲取得エラー:', error)
@@ -198,7 +199,7 @@ export async function deleteSong(id: string): Promise<void> {
       if (remainingSong.order > deletedOrder) {
         await updateDoc(doc(db, 'songs', remainingSong.id), {
           order: remainingSong.order - 1,
-          updatedAt: new Date()
+          updatedAt: serverTimestamp()
         })
       }
     }
