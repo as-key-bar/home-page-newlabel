@@ -1,72 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import fs from 'fs/promises'
-import path from 'path'
-import { parse } from 'csv-parse/sync'
+import { getSongs, addSong, updateSong, deleteSong, Song } from '@/lib/firestore'
 
-const CSV_PATH = path.join(process.cwd(), '../data/songs.csv')
-
-export interface Song {
-  id: string
-  楽曲表示順: string
-  title: string
-  releaseDate: string
-  genre: string
-  description: string
-  originalTracks: string
-  audioPath: string
-  coverImagePath: string
-  visible: string
-}
-
-// CSV形式に変換するヘルパー関数
-function escapeCSVField(field: string): string {
-  // 空文字の場合はそのまま返す
-  if (!field) return ''
-  
-  // カンマ、改行、ダブルクォートが含まれる場合はクォートで囲む
-  if (field.includes(',') || field.includes('"') || field.includes('\n') || field.includes('\r')) {
-    return `"${field.replace(/"/g, '""')}"`
-  }
-  return field
-}
-
-function songToCSVRow(song: Song): string {
-  return [
-    song.id,
-    song.楽曲表示順,
-    escapeCSVField(song.title),
-    escapeCSVField(song.releaseDate),
-    escapeCSVField(song.genre),
-    escapeCSVField(song.description),
-    escapeCSVField(song.originalTracks),
-    escapeCSVField(song.audioPath),
-    escapeCSVField(song.coverImagePath),
-    song.visible
-  ].join(',')
-}
 
 // 全曲取得
 export async function GET() {
   try {
-    const csvContent = await fs.readFile(CSV_PATH, 'utf-8')
-    const records = parse(csvContent, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true
-    })
-    
-    // 楽曲表示順でソート（数値として比較）
-    const sortedRecords = (records as Song[]).sort((a: Song, b: Song) => {
-      const orderA = parseInt(a.楽曲表示順) || 0
-      const orderB = parseInt(b.楽曲表示順) || 0
-      return orderA - orderB
-    })
-    
-    return NextResponse.json({ songs: sortedRecords })
+    const songs = await getSongs()
+    return NextResponse.json({ songs })
   } catch (error) {
-    console.error('Error reading CSV file:', error)
+    console.error('Error getting songs:', error)
     return NextResponse.json(
-      { error: 'CSVファイルの読み込みに失敗しました' },
+      { error: '楽曲データの取得に失敗しました' },
       { status: 500 }
     )
   }
@@ -75,41 +19,8 @@ export async function GET() {
 // 新規追加
 export async function POST(request: NextRequest) {
   try {
-    const newSong: Omit<Song, 'id'> = await request.json()
-    
-    // 現在のデータを読み込み
-    const csvContent = await fs.readFile(CSV_PATH, 'utf-8')
-    const records: Song[] = parse(csvContent, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true
-    })
-    
-    // 新しいIDを生成（最大ID + 1）
-    const maxId = Math.max(...records.map(r => parseInt(r.id) || 0), 0)
-    
-    // 既存楽曲の表示順を1つずつ下げる
-    records.forEach(record => {
-      const currentOrder = parseInt(record.楽曲表示順) || 0
-      record.楽曲表示順 = (currentOrder + 1).toString()
-    })
-    
-    // 新しい楽曲を最上位（表示順=1）に設定
-    const song: Song = {
-      id: (maxId + 1).toString(),
-      ...newSong,
-      楽曲表示順: '1'
-    }
-    
-    // 新しい行を追加
-    records.push(song)
-    
-    // CSVを再構築
-    const header = 'id,楽曲表示順,title,releaseDate,genre,description,originalTracks,audioPath,coverImagePath,visible'
-    const csvRows = records.map(songToCSVRow)
-    const newCsvContent = [header, ...csvRows].join('\n') + '\n'
-    
-    await fs.writeFile(CSV_PATH, newCsvContent, 'utf-8')
+    const newSongData = await request.json()
+    const song = await addSong(newSongData)
     
     return NextResponse.json({ 
       message: '楽曲が正常に追加されました',
@@ -127,37 +38,19 @@ export async function POST(request: NextRequest) {
 // 更新
 export async function PUT(request: NextRequest) {
   try {
-    const updatedSong: Song = await request.json()
+    const { id, ...updates } = await request.json()
     
-    // 現在のデータを読み込み
-    const csvContent = await fs.readFile(CSV_PATH, 'utf-8')
-    const records: Song[] = parse(csvContent, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true
-    })
-    
-    // 対象の楽曲を見つけて更新
-    const index = records.findIndex(r => r.id === updatedSong.id)
-    if (index === -1) {
+    if (!id) {
       return NextResponse.json(
-        { error: '指定された楽曲が見つかりません' },
-        { status: 404 }
+        { error: 'IDが指定されていません' },
+        { status: 400 }
       )
     }
     
-    records[index] = updatedSong
-    
-    // CSVを再構築
-    const header = 'id,楽曲表示順,title,releaseDate,genre,description,originalTracks,audioPath,coverImagePath,visible'
-    const csvRows = records.map(songToCSVRow)
-    const newCsvContent = [header, ...csvRows].join('\n') + '\n'
-    
-    await fs.writeFile(CSV_PATH, newCsvContent, 'utf-8')
+    await updateSong(id, updates)
     
     return NextResponse.json({ 
-      message: '楽曲が正常に更新されました',
-      song: updatedSong 
+      message: '楽曲が正常に更新されました'
     })
   } catch (error) {
     console.error('Error updating song:', error)
@@ -181,42 +74,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
     
-    // 現在のデータを読み込み
-    const csvContent = await fs.readFile(CSV_PATH, 'utf-8')
-    const records: Song[] = parse(csvContent, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true
-    })
-    
-    // 削除対象の楽曲を見つける
-    const targetSong = records.find(r => r.id === id)
-    if (!targetSong) {
-      return NextResponse.json(
-        { error: '指定された楽曲が見つかりません' },
-        { status: 404 }
-      )
-    }
-    
-    const deletedOrder = parseInt(targetSong.楽曲表示順) || 0
-    
-    // 楽曲を削除
-    const filteredRecords = records.filter(r => r.id !== id)
-    
-    // 削除された楽曲より下位の楽曲の表示順を1つずつ上げる
-    filteredRecords.forEach(record => {
-      const currentOrder = parseInt(record.楽曲表示順) || 0
-      if (currentOrder > deletedOrder) {
-        record.楽曲表示順 = (currentOrder - 1).toString()
-      }
-    })
-    
-    // CSVを再構築
-    const header = 'id,楽曲表示順,title,releaseDate,genre,description,originalTracks,audioPath,coverImagePath,visible'
-    const csvRows = filteredRecords.map(songToCSVRow)
-    const newCsvContent = [header, ...csvRows].join('\n') + '\n'
-    
-    await fs.writeFile(CSV_PATH, newCsvContent, 'utf-8')
+    await deleteSong(id)
     
     return NextResponse.json({ 
       message: '楽曲が正常に削除されました'
