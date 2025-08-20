@@ -14,13 +14,19 @@ const firebaseConfig = {
 
 // デバッグ用ログ
 console.log('🔥 Firebase Config Debug:', {
-  apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'NOT SET',
+  apiKey: firebaseConfig.apiKey ? firebaseConfig.apiKey : 'NOT SET',
   authDomain: firebaseConfig.authDomain,
   projectId: firebaseConfig.projectId,
   storageBucket: firebaseConfig.storageBucket,
   messagingSenderId: firebaseConfig.messagingSenderId,
-  appId: firebaseConfig.appId ? `${firebaseConfig.appId.substring(0, 20)}...` : 'NOT SET',
+  appId: firebaseConfig.appId,
   measurementId: firebaseConfig.measurementId
+})
+
+console.log('Environment variables check:', {
+  NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
 })
 
 // Firebase初期化
