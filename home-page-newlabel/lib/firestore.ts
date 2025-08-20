@@ -9,7 +9,9 @@ import {
   deleteDoc, 
   query, 
   orderBy, 
-  where 
+  where,
+  serverTimestamp,
+  Timestamp 
 } from 'firebase/firestore'
 
 export interface Song {
@@ -66,12 +68,15 @@ export async function getSongs(): Promise<Song[]> {
     const q = query(songsRef, orderBy('order', 'asc'))
     const snapshot = await getDocs(q)
     
-    return snapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id,
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate(),
-    })) as Song[]
+    return snapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        ...data,
+        id: doc.id,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
+      }
+    }) as Song[]
   } catch (error) {
     console.error('楽曲データ取得エラー:', error)
     throw new Error('楽曲データの取得に失敗しました')
@@ -89,12 +94,15 @@ export async function getVisibleSongs(): Promise<Song[]> {
     )
     const snapshot = await getDocs(q)
     
-    return snapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id,
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate(),
-    })) as Song[]
+    return snapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        ...data,
+        id: doc.id,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
+      }
+    }) as Song[]
   } catch (error) {
     console.error('公開楽曲データ取得エラー:', error)
     throw new Error('公開楽曲データの取得に失敗しました')
@@ -136,7 +144,7 @@ export async function addSong(songData: Omit<Song, 'id' | 'createdAt' | 'updated
     for (const song of songs) {
       await updateDoc(doc(db, 'songs', song.id), {
         order: song.order + 1,
-        updatedAt: new Date()
+        updatedAt: serverTimestamp()
       })
     }
     
@@ -145,8 +153,8 @@ export async function addSong(songData: Omit<Song, 'id' | 'createdAt' | 'updated
       ...songData,
       id: newId,
       order: 1,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: serverTimestamp() as any,
+      updatedAt: serverTimestamp() as any
     }
     
     await setDoc(doc(db, 'songs', newId), newSong)
@@ -163,7 +171,7 @@ export async function updateSong(id: string, updates: Partial<Song>): Promise<vo
     const songRef = doc(db, 'songs', id)
     await updateDoc(songRef, {
       ...updates,
-      updatedAt: new Date()
+      updatedAt: serverTimestamp()
     })
   } catch (error) {
     console.error('楽曲更新エラー:', error)
