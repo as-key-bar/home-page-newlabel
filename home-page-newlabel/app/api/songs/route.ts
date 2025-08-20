@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSongs, addSong, updateSong, deleteSong, Song } from '@/lib/firestore'
 
+export type { Song }
+
 
 // 全曲取得
 export async function GET() {
