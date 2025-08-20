@@ -605,7 +605,7 @@ export default function Home() {
       </div>
 
       {/* スライドメニュー */}
-      <SlideMenu volume={volume} onVolumeChange={setVolume} />
+      <SlideMenu volume={volume} onVolumeChange={setVolume} isLoading={loading} />
 
       {/* ヘッダーパララックスレイヤー - ロゴ背景 */}
       <React.Fragment key="header-parallax">

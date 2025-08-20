@@ -6,9 +6,10 @@ import Link from 'next/link'
 interface SlideMenuProps {
   volume?: number
   onVolumeChange?: (volume: number) => void
+  isLoading?: boolean
 }
 
-export default function SlideMenu({ volume = 0.1, onVolumeChange }: SlideMenuProps) {
+export default function SlideMenu({ volume = 0.1, onVolumeChange, isLoading = false }: SlideMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   const toggleMenu = () => {
@@ -17,6 +18,11 @@ export default function SlideMenu({ volume = 0.1, onVolumeChange }: SlideMenuPro
 
   const closeMenu = () => {
     setIsOpen(false)
+  }
+
+  // ローディング中は非表示
+  if (isLoading) {
+    return null
   }
 
   return (
