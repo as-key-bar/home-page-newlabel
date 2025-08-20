@@ -38,27 +38,53 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/songs').then(res => res.json()),
-      fetch('/api/profile').then(res => res.json())
-    ])
-      .then(([songsData, profileData]) => {
-        if (songsData && songsData.songs && Array.isArray(songsData.songs)) {
-          // visible="true"の楽曲のみをフィルター
-          const visibleSongs = songsData.songs.filter((song: Song) => song.visible === 'true')
-          setSongs(visibleSongs)
-        } else {
-          setError('楽曲データの読み込みに失敗しました')
-        }
+    // 直接Firestoreからデータを取得
+    const loadData = async () => {
+      try {
+        const { db } = await import('../lib/firebase')
+        const { collection, getDocs, query, orderBy, where } = await import('firebase/firestore')
         
-        if (profileData && !profileData.error) {
-          setProfile(profileData)
+        // 楽曲データ取得
+        const songsCollection = collection(db, 'songs')
+        const songsQuery = query(songsCollection, where('visible', '==', true), orderBy('order'))
+        const songsSnapshot = await getDocs(songsQuery)
+        const songsData = songsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        setSongs(songsData as Song[])
+        
+        // プロフィールデータ取得
+        const { doc, getDoc } = await import('firebase/firestore')
+        const profileRef = doc(db, 'settings', 'profile')
+        const profileSnapshot = await getDoc(profileRef)
+        if (profileSnapshot.exists()) {
+          setProfile(profileSnapshot.data() as Profile)
         }
-      })
-      .catch(err => {
-        setError('データの読み込みに失敗しました')
-        console.error(err)
-      })
+      } catch (err) {
+        console.error('直接データ取得エラー:', err)
+        // フォールバック: API経由で取得
+        Promise.all([
+          fetch('/api/songs').then(res => res.json()),
+          fetch('/api/profile').then(res => res.json())
+        ])
+        .then(([songsData, profileData]) => {
+          if (songsData && songsData.songs && Array.isArray(songsData.songs)) {
+            const visibleSongs = songsData.songs.filter((song: Song) => song.visible === 'true')
+            setSongs(visibleSongs)
+          } else {
+            setError('楽曲データの読み込みに失敗しました')
+          }
+          
+          if (profileData && !profileData.error) {
+            setProfile(profileData)
+          }
+        })
+        .catch(err => {
+          setError('データの読み込みに失敗しました')
+          console.error(err)
+        })
+      }
+    }
+    
+    loadData()
       .finally(() => {
         const currentTime = Date.now()
         const elapsedTime = currentTime - loadingStartTime
@@ -938,8 +964,8 @@ export default function Home() {
               }`}
             >
               {song.description && (
-                <div className="pl-4 pr-4 py-2" style={{ background: 'linear-gradient(to left, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0))' }}>
-                  <p className="text-sm sm:text-lg md:text-1xl lg:text-2xl xl:text-3xl drop-shadow whitespace-pre-line leading-relaxed" style={{ opacity: 1 }}>
+                <div className="pl-4 pr-4 py-2" style={{ background: 'linear-gradient(to left, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0))' }}>
+                  <p className="text-sm sm:text-lg md:text-1xl lg:text-2xl xl:text-3xl drop-shadow whitespace-pre-line leading-relaxed" style={{ opacity: 1, fontFamily: 'vdl-v7gothic, sans-serif', fontWeight: 300 }}>
                     {song.description.replace(/\/n/g, '\n')}
                   </p>
                 </div>
@@ -1021,8 +1047,8 @@ export default function Home() {
           {songs.slice(0, -1).map((_, index) => (
             <div key={`spacer-${index}`} className="h-[70vh] md:h-[75vh] lg:h-[100vh]"></div>
           ))}
-          <div key={`spacer-offset`} className="h-[100vh] md:h-[100vh] lg:h-[100vh]"></div>
-          <div key={`spacer-offset`} className="h-[250vh] md:h-[150vh] lg:h-[100vh]"></div>
+          <div key={`spacer-offset-1`} className="h-[100vh] md:h-[100vh] lg:h-[100vh]"></div>
+          <div key={`spacer-offset-2`} className="h-[250vh] md:h-[150vh] lg:h-[100vh]"></div>
           
 
         </div>
