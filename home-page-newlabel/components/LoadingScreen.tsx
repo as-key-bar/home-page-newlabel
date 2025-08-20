@@ -1,10 +1,28 @@
 'use client'
 
+import { useEffect } from 'react'
+
 interface LoadingScreenProps {
   isExiting?: boolean
 }
 
 export default function LoadingScreen({ isExiting = false }: LoadingScreenProps) {
+  // ローディング画面表示中はスクロールを無効にする
+  useEffect(() => {
+    // スクロールを無効にするスタイルを追加
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.width = '100%'
+    document.body.style.height = '100%'
+    
+    // コンポーネントがアンマウントされる時にスタイルを元に戻す
+    return () => {
+      document.body.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+      document.body.style.height = ''
+    }
+  }, [])
   return (
     <div className={`fixed inset-0 z-[10000] bg-white flex flex-col items-center justify-center invert ${isExiting ? 'animate-fall-down shadow-10xl' : ''}`}>
       {/* New Label Name Trim Logo */}
