@@ -25,6 +25,28 @@ export default function Home() {
   const [isAtBottom, setIsAtBottom] = useState(false)
   const [showInitialLoading, setShowInitialLoading] = useState(true)
   const [volume, setVolume] = useState(0.05) // 初期値10%
+  const [imagesLoaded, setImagesLoaded] = useState(false) // 画像読み込み完了状態
+
+  // 画像事前読み込み関数
+  const preloadImages = async (imagePaths: string[]): Promise<void> => {
+    const loadPromises = imagePaths.map((path) => {
+      return new Promise<void>((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => resolve()
+        img.onerror = () => reject(new Error(`Failed to load image: ${path}`))
+        img.src = path
+      })
+    })
+
+    try {
+      await Promise.all(loadPromises)
+      setImagesLoaded(true)
+    } catch (error) {
+      console.error('Image preloading failed:', error)
+      // エラーがあっても進行させる
+      setImagesLoaded(true)
+    }
+  }
 
   // サイト内遷移の検知
   useEffect(() => {
@@ -55,9 +77,24 @@ export default function Home() {
         const { doc, getDoc } = await import('firebase/firestore')
         const profileRef = doc(db, 'settings', 'profile')
         const profileSnapshot = await getDoc(profileRef)
+        let profileData: Profile | null = null
         if (profileSnapshot.exists()) {
-          setProfile(profileSnapshot.data() as Profile)
+          profileData = profileSnapshot.data() as Profile
+          setProfile(profileData)
         }
+
+        // 画像事前読み込み
+        const imagesToPreload: string[] = ['/images/newlabel_logo.png']
+        if (profileData?.profileImage) {
+          imagesToPreload.push(profileData.profileImage)
+        }
+        songsData.forEach((song: Song) => {
+          if (song.coverImagePath) {
+            imagesToPreload.push(song.coverImagePath)
+          }
+        })
+        
+        await preloadImages(imagesToPreload)
       } catch (err) {
         console.error('直接データ取得エラー:', err)
         // フォールバック: API経由で取得
@@ -76,10 +113,27 @@ export default function Home() {
           if (profileData && !profileData.error) {
             setProfile(profileData)
           }
+
+          // フォールバック時の画像事前読み込み
+          const imagesToPreload: string[] = ['/images/newlabel_logo.png']
+          if (profileData?.profileImage) {
+            imagesToPreload.push(profileData.profileImage)
+          }
+          if (songsData?.songs && Array.isArray(songsData.songs)) {
+            songsData.songs.forEach((song: Song) => {
+              if (song.coverImagePath) {
+                imagesToPreload.push(song.coverImagePath)
+              }
+            })
+          }
+          
+          preloadImages(imagesToPreload)
         })
         .catch(err => {
           setError('データの読み込みに失敗しました')
           console.error(err)
+          // エラー時でもロゴだけは読み込む
+          preloadImages(['/images/newlabel_logo.png'])
         })
       }
     }
@@ -98,16 +152,26 @@ export default function Home() {
           return
         }
         
-        setTimeout(() => {
-          // 落下アニメーション開始
-          setIsExiting(true)
-          // アニメーション完了後にローディング画面を非表示
-          setTimeout(() => {
-            setLoading(false)
-          }, 1200) // アニメーション完了後に余裕を持って非表示
-        }, remainingTime)
+        // 画像読み込み完了を待ってから落下アニメーション開始
+        const waitForImages = () => {
+          if (imagesLoaded) {
+            setTimeout(() => {
+              // 落下アニメーション開始
+              setIsExiting(true)
+              // アニメーション完了後にローディング画面を非表示
+              setTimeout(() => {
+                setLoading(false)
+              }, 1200) // アニメーション完了後に余裕を持って非表示
+            }, remainingTime)
+          } else {
+            // 画像読み込み完了まで100ms間隔で確認
+            setTimeout(waitForImages, 100)
+          }
+        }
+        
+        waitForImages()
       })
-  }, [showInitialLoading])
+  }, [showInitialLoading, imagesLoaded])
 
   // パララックススクロールとウィンドウサイズのイベントリスナー
   useEffect(() => {
