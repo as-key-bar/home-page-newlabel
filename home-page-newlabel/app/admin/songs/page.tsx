@@ -79,7 +79,10 @@ export default function SongsAdmin() {
       const response = await fetch('/api/songs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          visible: formData.visible === 'true'
+        })
       })
       
       if (!response.ok) {
@@ -105,7 +108,7 @@ export default function SongsAdmin() {
       originalTracks: song.originalTracks,
       audioPath: song.audioPath,
       coverImagePath: song.coverImagePath,
-      visible: song.visible
+      visible: song.visible ? 'true' : 'false'
     })
     setEditingSong(song)
     setShowAddForm(true)
@@ -121,7 +124,7 @@ export default function SongsAdmin() {
       originalTracks: song.originalTracks,
       audioPath: song.audioPath,
       coverImagePath: song.coverImagePath,
-      visible: song.visible
+      visible: song.visible ? 'true' : 'false'
     })
     setEditingSong(null) // 新規として扱う
     setShowAddForm(true)
@@ -138,7 +141,11 @@ export default function SongsAdmin() {
       const response = await fetch('/api/songs', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingSong.id, ...formData })
+        body: JSON.stringify({ 
+          id: editingSong.id, 
+          ...formData,
+          visible: formData.visible === 'true'
+        })
       })
       
       if (!response.ok) {
@@ -198,7 +205,7 @@ export default function SongsAdmin() {
     try {
       const updatedSong = {
         ...song,
-        visible: song.visible === 'true' ? 'false' : 'true'
+        visible: !song.visible
       }
       
       const response = await fetch('/api/songs', {
@@ -659,20 +666,20 @@ export default function SongsAdmin() {
                           <button
                             onClick={() => handleToggleVisibility(song)}
                             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                              song.visible === 'true' ? 'bg-green-600' : 'bg-gray-600'
+                              song.visible ? 'bg-green-600' : 'bg-gray-600'
                             }`}
-                            title={`クリックで${song.visible === 'true' ? '非表示' : '表示'}に切り替え`}
+                            title={`クリックで${song.visible ? '非表示' : '表示'}に切り替え`}
                           >
                             <span
                               className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                                song.visible === 'true' ? 'translate-x-5' : 'translate-x-1'
+                                song.visible ? 'translate-x-5' : 'translate-x-1'
                               }`}
                             />
                           </button>
                           <span className={`text-xs ${
-                            song.visible === 'true' ? 'text-green-400' : 'text-red-400'
+                            song.visible ? 'text-green-400' : 'text-red-400'
                           }`}>
-                            {song.visible === 'true' ? '表示' : '非表示'}
+                            {song.visible ? '表示' : '非表示'}
                           </span>
                         </div>
                         
