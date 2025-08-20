@@ -112,6 +112,13 @@ export default function SlideMenu({ volume = 0.1, onVolumeChange }: SlideMenuPro
               License
             </Link>
             <Link
+              href="/work"
+              onClick={closeMenu}
+              className="block text-xl font-medium text-black hover:text-gray-600 transition-colors"
+            >
+              Work
+            </Link>
+            <Link
               href="/contact"
               onClick={closeMenu}
               className="block text-xl font-medium text-black hover:text-gray-600 transition-colors"
