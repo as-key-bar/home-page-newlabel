@@ -44,6 +44,8 @@ next-env.d.ts
 firebase-debug.log*
 .firebase/
 firebase-upload-results.json
+service-account-key.json
+*-service-account.json
 
 # Development scripts
 scripts/upload-to-firebase.js
