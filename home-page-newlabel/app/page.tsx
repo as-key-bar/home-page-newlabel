@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { Song } from './api/songs/route'
-import { Profile } from './api/profile/route'
+import { Profile } from '../lib/firestore'
 import LoadingScreen from '../components/LoadingScreen'
 import SlideMenu from '../components/SlideMenu'
 
@@ -67,7 +67,7 @@ export default function Home() {
         ])
         .then(([songsData, profileData]) => {
           if (songsData && songsData.songs && Array.isArray(songsData.songs)) {
-            const visibleSongs = songsData.songs.filter((song: Song) => song.visible === 'true')
+            const visibleSongs = songsData.songs.filter((song: Song) => song.visible === true)
             setSongs(visibleSongs)
           } else {
             setError('楽曲データの読み込みに失敗しました')

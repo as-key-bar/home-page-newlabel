@@ -54,6 +54,7 @@ export interface Profile {
     soundcloud: string
     bandcamp: string
     instagram: string
+    youtube: string
   }
   profileImage: string
 }
