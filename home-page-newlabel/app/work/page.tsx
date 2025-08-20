@@ -69,7 +69,7 @@ export default function WorkPage() {
               />
             </Link>
             <p className="text-gray-600 dark:text-gray-400 mt-1 text-center">
-              Work
+              活動報告
             </p>
           </div>
         </div>
