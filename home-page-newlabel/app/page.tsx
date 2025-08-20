@@ -88,7 +88,7 @@ export default function Home() {
         if (profileData?.profileImage) {
           imagesToPreload.push(profileData.profileImage)
         }
-        songsData.forEach((song: Song) => {
+        songsData.forEach((song: any) => {
           if (song.coverImagePath) {
             imagesToPreload.push(song.coverImagePath)
           }
@@ -120,7 +120,7 @@ export default function Home() {
             imagesToPreload.push(profileData.profileImage)
           }
           if (songsData?.songs && Array.isArray(songsData.songs)) {
-            songsData.songs.forEach((song: Song) => {
+            songsData.songs.forEach((song: any) => {
               if (song.coverImagePath) {
                 imagesToPreload.push(song.coverImagePath)
               }
