@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Song } from './api/songs/route'
 import { Profile } from '../lib/firestore'
 import LoadingScreen from '../components/LoadingScreen'
@@ -26,6 +26,24 @@ export default function Home() {
   const [showInitialLoading, setShowInitialLoading] = useState(true)
   const [volume, setVolume] = useState(0.05) // 初期値10%
   const [imagesLoaded, setImagesLoaded] = useState(false) // 画像読み込み完了状態
+
+  // スクロール最適化用のrefs
+  const rafId = useRef<number | undefined>(undefined)
+  const lastScrollTime = useRef<number>(0)
+  const scrollDirection = useRef<'up' | 'down'>('down')
+  const lastScrollY = useRef<number>(0)
+
+  // requestAnimationFrameベースのスロットリング
+  const useRafThrottle = (callback: () => void) => {
+    return useCallback(() => {
+      if (rafId.current) return
+      
+      rafId.current = requestAnimationFrame(() => {
+        callback()
+        rafId.current = undefined
+      })
+    }, [callback])
+  }
 
   // 画像事前読み込み関数
   const preloadImages = async (imagePaths: string[]): Promise<void> => {
@@ -173,20 +191,44 @@ export default function Home() {
       })
   }, [showInitialLoading, imagesLoaded])
 
+  // 最適化されたスクロールハンドラー
+  const optimizedScrollHandler = useCallback(() => {
+    const currentScrollY = window.scrollY
+    const currentTime = performance.now()
+    
+    // パフォーマンス測定 (開発環境のみ)
+    if (process.env.NODE_ENV === 'development' && lastScrollTime.current > 0) {
+      const timeDiff = currentTime - lastScrollTime.current
+      if (timeDiff > 16.67) { // 60FPSを下回る場合のみログ
+        console.debug(`スクロール処理時間: ${timeDiff.toFixed(2)}ms`)
+      }
+    }
+    
+    // スクロール方向の検出
+    if (currentScrollY !== lastScrollY.current) {
+      scrollDirection.current = currentScrollY > lastScrollY.current ? 'down' : 'up'
+      lastScrollY.current = currentScrollY
+    }
+    
+    // スクロール状態の更新
+    setScrollY(currentScrollY)
+    
+    // 一番下までスクロールしたかチェック
+    const documentHeight = document.documentElement.scrollHeight
+    const windowHeight = window.innerHeight
+    const scrollBottom = currentScrollY + windowHeight
+    const threshold = 100 // 底から100px以内で判定
+    
+    setIsAtBottom(scrollBottom >= documentHeight - threshold)
+    
+    lastScrollTime.current = currentTime
+  }, [])
+
+  // requestAnimationFrameベースのスロットル済みスクロールハンドラー
+  const throttledScrollHandler = useRafThrottle(optimizedScrollHandler)
+
   // パララックススクロールとウィンドウサイズのイベントリスナー
   useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY
-      setScrollY(currentScrollY)
-      
-      // 一番下までスクロールしたかチェック
-      const documentHeight = document.documentElement.scrollHeight
-      const windowHeight = window.innerHeight
-      const scrollBottom = currentScrollY + windowHeight
-      const threshold = 100 // 底から100px以内で判定
-      
-      setIsAtBottom(scrollBottom >= documentHeight - threshold)
-    }
 
     const handleResize = () => {
       setWindowHeight(window.innerHeight)
@@ -197,12 +239,16 @@ export default function Home() {
     setWindowHeight(window.innerHeight)
     setWindowWidth(window.innerWidth)
 
-    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', throttledScrollHandler, { passive: true })
     window.addEventListener('resize', handleResize)
     
     return () => {
-      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('scroll', throttledScrollHandler)
       window.removeEventListener('resize', handleResize)
+      // クリーンアップ時にrequestAnimationFrameをキャンセル
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current)
+      }
     }
   }, [])
 
