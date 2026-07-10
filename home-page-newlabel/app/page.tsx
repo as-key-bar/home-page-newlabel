@@ -5,20 +5,19 @@ import { Song } from './api/songs/route'
 import { Profile } from '../lib/firestore'
 import LoadingScreen from '../components/LoadingScreen'
 import SlideMenu from '../components/SlideMenu'
+import LazyImage from '../components/LazyImage'
 
 export default function Home() {
   const [songs, setSongs] = useState<Song[]>([])
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [isExiting, setIsExiting] = useState(false)
-  const [loadingStartTime, setLoadingStartTime] = useState(Date.now())
+  const [loadingStartTime] = useState(Date.now()) // 削除予定の警告を修正
   const [error, setError] = useState<string | null>(null)
   const [scrollY, setScrollY] = useState(0)
   const [windowHeight, setWindowHeight] = useState(0)
-  const [windowWidth, setWindowWidth] = useState(0)
   const [currentlyPlaying, setCurrentlyPlaying] = useState<number | null>(null)
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null)
-  const [animatingTo, setAnimatingTo] = useState<number | null>(null)
   const [backgroundSizes, setBackgroundSizes] = useState<Map<number, number>>(new Map())
   const [playingDarkenedSongs, setPlayingDarkenedSongs] = useState<Set<number>>(new Set())
   const [showingSongInfo, setShowingSongInfo] = useState<number | null>(null)
@@ -26,6 +25,7 @@ export default function Home() {
   const [showInitialLoading, setShowInitialLoading] = useState(true)
   const [volume, setVolume] = useState(0.05) // 初期値10%
   const [imagesLoaded, setImagesLoaded] = useState(false) // 画像読み込み完了状態
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set()) // 読み込み済み画像URLセット
 
   // スクロール最適化用のrefs
   const rafId = useRef<number | undefined>(undefined)
@@ -45,12 +45,16 @@ export default function Home() {
     }, [callback])
   }
 
-  // 画像事前読み込み関数
-  const preloadImages = async (imagePaths: string[]): Promise<void> => {
+
+  // 重要画像の事前読み込み関数（ロゴのみ）
+  const preloadCriticalImages = async (imagePaths: string[]): Promise<void> => {
     const loadPromises = imagePaths.map((path) => {
       return new Promise<void>((resolve, reject) => {
         const img = new Image()
-        img.onload = () => resolve()
+        img.onload = () => {
+          setLoadedImages(prev => new Set(prev).add(path))
+          resolve()
+        }
         img.onerror = () => reject(new Error(`Failed to load image: ${path}`))
         img.src = path
       })
@@ -60,11 +64,21 @@ export default function Home() {
       await Promise.all(loadPromises)
       setImagesLoaded(true)
     } catch (error) {
-      console.error('Image preloading failed:', error)
+      console.error('Critical image preloading failed:', error)
       // エラーがあっても進行させる
       setImagesLoaded(true)
     }
   }
+
+  // 遅延読み込み画像の読み込み状況を監視
+  useEffect(() => {
+    // 重要画像（ロゴ）が読み込まれているかチェック
+    const criticalImageLoaded = loadedImages.has('/images/newlabel_logo.png')
+    
+    if (criticalImageLoaded && !imagesLoaded) {
+      setImagesLoaded(true)
+    }
+  }, [loadedImages, imagesLoaded])
 
   // サイト内遷移の検知
   useEffect(() => {
@@ -101,18 +115,9 @@ export default function Home() {
           setProfile(profileData)
         }
 
-        // 画像事前読み込み
-        const imagesToPreload: string[] = ['/images/newlabel_logo.png']
-        if (profileData?.profileImage) {
-          imagesToPreload.push(profileData.profileImage)
-        }
-        songsData.forEach((song: any) => {
-          if (song.coverImagePath) {
-            imagesToPreload.push(song.coverImagePath)
-          }
-        })
-        
-        await preloadImages(imagesToPreload)
+        // 重要画像（ロゴのみ）の事前読み込み
+        const criticalImages: string[] = ['/images/newlabel_logo.png']
+        await preloadCriticalImages(criticalImages)
       } catch (err) {
         console.error('直接データ取得エラー:', err)
         // フォールバック: API経由で取得
@@ -132,26 +137,15 @@ export default function Home() {
             setProfile(profileData)
           }
 
-          // フォールバック時の画像事前読み込み
-          const imagesToPreload: string[] = ['/images/newlabel_logo.png']
-          if (profileData?.profileImage) {
-            imagesToPreload.push(profileData.profileImage)
-          }
-          if (songsData?.songs && Array.isArray(songsData.songs)) {
-            songsData.songs.forEach((song: any) => {
-              if (song.coverImagePath) {
-                imagesToPreload.push(song.coverImagePath)
-              }
-            })
-          }
-          
-          preloadImages(imagesToPreload)
+          // フォールバック時の重要画像読み込み
+          const criticalImages: string[] = ['/images/newlabel_logo.png']
+          preloadCriticalImages(criticalImages)
         })
         .catch(err => {
           setError('データの読み込みに失敗しました')
           console.error(err)
           // エラー時でもロゴだけは読み込む
-          preloadImages(['/images/newlabel_logo.png'])
+          preloadCriticalImages(['/images/newlabel_logo.png'])
         })
       }
     }
@@ -232,12 +226,10 @@ export default function Home() {
 
     const handleResize = () => {
       setWindowHeight(window.innerHeight)
-      setWindowWidth(window.innerWidth)
     }
 
     // 初期化
     setWindowHeight(window.innerHeight)
-    setWindowWidth(window.innerWidth)
 
     window.addEventListener('scroll', throttledScrollHandler, { passive: true })
     window.addEventListener('resize', handleResize)
@@ -335,13 +327,6 @@ export default function Home() {
     return getResponsiveSpacerHeight() * 1  // スペーサーの100%の高さをバッファとして使用
   }
 
-  // プロフィールセクションの開始位置計算関数
-  const getProfileStartPosition = () => {
-    const spacerHeight = getResponsiveSpacerHeight()
-    const bufferHeight = getBufferHeight()
-    const totalSpacers = songs.length // オフセットスペーサーも含む
-    return bufferHeight + totalSpacers * spacerHeight
-  }
 
   // カスタムスムーススクロール関数（ゆっくりとした引っ張られるようなアニメーション）
   const smoothScrollTo = (targetY: number) => {
@@ -374,7 +359,7 @@ export default function Home() {
   }
 
   // パララックスレイヤーの色合い計算関数（再生状態も考慮）
-  const calculateLayerFilter = (index: number, scrollY: number, windowHeight: number, song?: Song): string => {
+  const calculateLayerFilter = (index: number, scrollY: number, song?: Song): string => {
     const spacerHeight = getResponsiveSpacerHeight()
     const bufferHeight = getBufferHeight()
     const layerStartPosition = bufferHeight + (index * spacerHeight)
@@ -405,7 +390,6 @@ export default function Home() {
       const whitenessProgress = Math.min(1, fadeDistance / maxFadeDistance)
       
       // 白いレイヤーのオーバーレイ効果をCSSフィルターで再現
-      const whiteLayerOpacity = whitenessProgress * 1 // 最大60%の白いレイヤー
       const saturateValue = Math.max(0.4, 1 - whitenessProgress * 0.6) // 彩度を下げる
       // 再生中の場合はベースの明度を下げる
       const baseBrightness = isPlayingDarkened ? 0.84 : 1.2 // 1.2 * 0.7 = 0.84
@@ -655,21 +639,30 @@ export default function Home() {
 
       {/* ヘッダーパララックスレイヤー - ロゴ背景 */}
       <React.Fragment key="header-parallax">
-        {/* ヘッダー背景画像レイヤー */}
+        {/* ヘッダー背景画像レイヤー - 遅延読み込み対応 */}
         <div 
           key="header-background"
           className="fixed inset-0 w-full h-full"
           style={{
-            backgroundImage: `url(/images/newlabel_logo.png)`,
-            backgroundSize: '50%',
-            backgroundPosition: `center ${50 - (scrollY * 0.1)}%`,
-            backgroundRepeat: 'no-repeat',
             transform: `translateY(${scrollY * -0.8}px)`,
             zIndex: -(songs.length + 1),
-            filter: `brightness(0.9) saturate(0.8) blur(0.5px) drop-shadow(0 10px 25px rgba(0, 0, 0, 0.3))`,
-            transition: 'filter 0.3s ease-out, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+            transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
           }}
-        />
+        >
+          <LazyImage
+            src="/images/newlabel_logo.png"
+            alt="NewLabel Logo Background"
+            className="w-full h-full"
+            style={{
+              backgroundSize: '50%',
+              backgroundPosition: `center ${50 - (scrollY * 0.1)}%`,
+              filter: `brightness(0.9) saturate(0.8) blur(0.5px) drop-shadow(0 10px 25px rgba(0, 0, 0, 0.3))`,
+              transition: 'filter 0.3s ease-out'
+            }}
+            threshold={0.1}
+            fallbackColor="rgba(255, 255, 255, 0.1)"
+          />
+        </div>
         
         {/* ヘッダークリック可能レイヤー */}
         <div
@@ -752,11 +745,16 @@ export default function Home() {
               {/* プロフィール画像 */}
               <div className="flex-shrink-0 mx-auto md:mx-0">
                 {profile.profileImage ? (
-                  <img
-                    src={profile.profileImage}
-                    alt={profile.name}
-                    className="w-20 h-20 rounded-full object-cover"
-                  />
+                  <div className="w-20 h-20 rounded-full overflow-hidden">
+                    <LazyImage
+                      src={profile.profileImage}
+                      alt={profile.name}
+                      className="w-full h-full"
+                      style={{ backgroundSize: 'cover' }}
+                      threshold={0.1}
+                      fallbackColor="#f3f4f6"
+                    />
+                  </div>
                 ) : (
                   <div className="w-20 h-20 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
                     <span className="text-gray-500 dark:text-gray-400 text-sm">画像</span>
@@ -885,11 +883,16 @@ export default function Home() {
               {/* プロフィール画像 */}
               <div className="flex-shrink-0 mx-auto md:mx-0">
                 {profile.profileImage ? (
-                  <img
-                    src={profile.profileImage}
-                    alt={profile.name}
-                    className="w-20 h-20 rounded-full object-cover"
-                  />
+                  <div className="w-20 h-20 rounded-full overflow-hidden">
+                    <LazyImage
+                      src={profile.profileImage}
+                      alt={profile.name}
+                      className="w-full h-full"
+                      style={{ backgroundSize: 'cover' }}
+                      threshold={0.1}
+                      fallbackColor="#f3f4f6"
+                    />
+                  </div>
                 ) : (
                   <div className="w-20 h-20 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
                     <span className="text-gray-500 dark:text-gray-400 text-sm">画像</span>
@@ -1019,18 +1022,24 @@ export default function Home() {
               transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
             }}
           >
-            {/* 背景画像レイヤー（フィルター適用対象） */}
-            <div 
+            {/* 背景画像レイヤー（フィルター適用対象） - 遅延読み込み対応 */}
+            <LazyImage
+              src={song.coverImagePath}
+              alt={`${song.title} cover image`}
               className="absolute inset-0 w-full h-full"
               style={{
-                backgroundImage: `url(${song.coverImagePath})`,
                 backgroundSize: calculateBackgroundSize(song),
                 backgroundPosition: index === 0 
                   ? `center ${50 + (Math.max(0, scrollY - getBufferHeight()) * 0.08)}%`
                   : `center ${50 + (Math.max(0, scrollY - (getBufferHeight() + index * getResponsiveSpacerHeight())) * 0.05)}%`,
-                backgroundRepeat: 'no-repeat',
-                filter: `${calculateLayerFilter(index, scrollY, windowHeight, song)} drop-shadow(0 10px 25px rgba(0, 0, 0, 1)) drop-shadow(0 4px 8px rgba(0, 0, 0, 1))`,
+                filter: `${calculateLayerFilter(index, scrollY, song)} drop-shadow(0 10px 25px rgba(0, 0, 0, 1)) drop-shadow(0 4px 8px rgba(0, 0, 0, 1))`,
                 transition: 'filter 0.3s ease-out'
+              }}
+              threshold={0.1}
+              fallbackColor="rgba(0, 0, 0, 0.8)"
+              onLoad={() => {
+                // 読み込み完了時のコールバック
+                setLoadedImages(prev => new Set(prev).add(song.coverImagePath))
               }}
             />
 
