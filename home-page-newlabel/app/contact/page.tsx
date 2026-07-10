@@ -28,6 +28,8 @@ export default function Contact() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState('')
   const [profile, setProfile] = useState<Profile | null>(null)
+  // Temporarily disable the contact form while investigating errors
+  const isTemporarilyDisabled = true
 
   useEffect(() => {
     fetch('/api/profile')
@@ -49,6 +51,10 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isTemporarilyDisabled) {
+      setSubmitMessage('現在コンタクトページはエラーのためご利用いただけません。しばらくしてから再度お試しください。')
+      return
+    }
     setIsSubmitting(true)
     setSubmitMessage('')
     
@@ -123,6 +129,12 @@ export default function Contact() {
             </div>
           )}
 
+          {isTemporarilyDisabled && (
+            <div className="mb-6 p-4 rounded-lg bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200">
+              現在コンタクトページは一時的に利用不可です。復旧次第ご案内いたします。
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -135,6 +147,7 @@ export default function Contact() {
                 required
                 value={formData.name}
                 onChange={handleChange}
+                disabled={isTemporarilyDisabled}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -149,7 +162,8 @@ export default function Contact() {
                 name="email"
                 required
                 value={formData.email}
-                onChange={handleChange}
+                  onChange={handleChange}
+                  disabled={isTemporarilyDisabled}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -163,7 +177,8 @@ export default function Contact() {
                 name="subject"
                 required
                 value={formData.subject}
-                onChange={handleChange}
+                  onChange={handleChange}
+                  disabled={isTemporarilyDisabled}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">選択してください</option>
@@ -185,19 +200,20 @@ export default function Contact() {
                 required
                 rows={6}
                 value={formData.message}
-                onChange={handleChange}
+                  onChange={handleChange}
+                  disabled={isTemporarilyDisabled}
                 placeholder="ご依頼内容、予算、納期などの詳細をお聞かせください"
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
-            >
-              {isSubmitting ? '送信中...' : 'お問い合わせを送信'}
-            </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || isTemporarilyDisabled}
+                className="w-full bg-black hover:bg-gray-800 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+              >
+                {isTemporarilyDisabled ? '一時的に利用不可' : isSubmitting ? '送信中...' : 'お問い合わせを送信'}
+              </button>
           </form>
 
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
