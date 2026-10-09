@@ -49,10 +49,6 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isTemporarilyDisabled) {
-      setSubmitMessage('現在コンタクトページはエラーのためご利用いただけません。しばらくしてから再度お試しください。')
-      return
-    }
     setIsSubmitting(true)
     setSubmitMessage('')
     
