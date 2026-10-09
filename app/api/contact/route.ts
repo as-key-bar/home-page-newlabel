@@ -78,6 +78,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    const notifications: string[] = []
+
     // メール送信
     try {
       console.log('📤 Sending emails via Gmail SMTP...')
@@ -157,13 +159,10 @@ ${message}
       await transporter.sendMail(autoReplyMailOptions)
       console.log('✅ Auto-reply email sent successfully')
       
+      notifications.push('email')
     } catch (emailError) {
       console.error('❌ Gmail SMTP error:', emailError)
-      // メール送信エラーでも処理を継続（他の通知方法を試すため）
     }
-
-    // 複数の通知方法を試行
-    const notifications = []
 
     // 1. Webhook通知（設定されている場合）
     if (process.env.WEBHOOK_URL) {
@@ -319,6 +318,15 @@ ${message}
     }
 
     console.log(`📊 Notifications sent: ${notifications.join(', ') || 'none'}`)
+    
+    if (notifications.length === 0) {
+      console.error('❌ All notification channels failed')
+      return NextResponse.json(
+        { error: 'メールの送信に失敗しました。管理者設定をご確認いただくか、しばらく経ってから再度お試しください。' },
+        { status: 500 }
+      )
+    }
+
     console.log('✅ Contact form processing completed')
 
     return NextResponse.json(
