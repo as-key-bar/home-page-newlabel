@@ -66,12 +66,14 @@ export default function Home() {
         const { db } = await import('../lib/firebase')
         const { collection, getDocs, query, orderBy, where } = await import('firebase/firestore')
         
-        // 楽曲データ取得
+        // 楽曲データ取得（トップページ表示対象のみ）
         const songsCollection = collection(db, 'songs')
         const songsQuery = query(songsCollection, where('visible', '==', true), orderBy('order'))
         const songsSnapshot = await getDocs(songsQuery)
-        const songsData = songsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-        setSongs(songsData as Song[])
+        const songsData = songsSnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }) as Song)
+          .filter(song => song.showInTop !== false)
+        setSongs(songsData)
         
         // プロフィールデータ取得
         const { doc, getDoc } = await import('firebase/firestore')
