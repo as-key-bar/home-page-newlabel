@@ -809,12 +809,15 @@ export default function Home() {
             </div>
             
             {/* ナビゲーションセクション（表示のみ） */}
-              <div className="flex flex-col gap-4 justify-center items-center">
+              <div className="flex flex-col gap-3 justify-center items-center">
                 <div className="bg-transparent text-black px-4 py-2 rounded-lg font-medium text-center min-w-[140px] text-sm">
                   楽曲利用規約はこちら
                 </div>
                 <div className="bg-transparent text-black px-4 py-2 rounded-lg font-medium text-center min-w-[140px] text-sm">
                   お問い合わせはこちら
+                </div>
+                <div className="bg-black/80 text-white px-5 py-2.5 rounded-lg font-semibold text-center min-w-[160px] text-sm">
+                  制作実績・できること・料金表はこちら
                 </div>
               </div>
             </section>
@@ -940,7 +943,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-col gap-4 justify-center items-center">
+            <div className="flex flex-col gap-3 justify-center items-center">
               <a
                 href="/license"
                 className="bg-transparent text-black px-4 py-2 rounded-lg font-medium text-center min-w-[140px] text-sm cursor-pointer"
@@ -954,6 +957,13 @@ export default function Home() {
                 style={{ position: 'relative', zIndex: 3010 }}
               >
                 お問い合わせはこちら
+              </a>
+              <a
+                href="/work"
+                className="bg-black/90 hover:bg-black text-white px-5 py-2.5 rounded-lg font-semibold text-center min-w-[160px] text-sm cursor-pointer shadow-md transition-all hover:scale-105"
+                style={{ position: 'relative', zIndex: 3010 }}
+              >
+                制作実績・できること・料金表はこちら
               </a>
             </div>
           </section>
