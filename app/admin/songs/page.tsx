@@ -38,7 +38,10 @@ export default function SongsAdmin() {
     originalTracks: '',
     audioPath: '',
     coverImagePath: '',
-    visible: 'true'
+    visible: 'true',
+    showInTop: true,
+    showInPortfolio: true,
+    clientOrProject: ''
   })
 
   // 楽曲一覧を取得
@@ -70,7 +73,10 @@ export default function SongsAdmin() {
       originalTracks: '',
       audioPath: '',
       coverImagePath: '',
-      visible: 'true'
+      visible: 'true',
+      showInTop: true,
+      showInPortfolio: true,
+      clientOrProject: ''
     })
     setEditingSong(null)
     setShowAddForm(false)
@@ -93,7 +99,10 @@ export default function SongsAdmin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          visible: formData.visible === 'true'
+          visible: formData.visible === 'true',
+          showInTop: formData.showInTop,
+          showInPortfolio: formData.showInPortfolio,
+          clientOrProject: formData.clientOrProject.trim()
         })
       })
       
@@ -120,7 +129,10 @@ export default function SongsAdmin() {
       originalTracks: song.originalTracks,
       audioPath: song.audioPath,
       coverImagePath: song.coverImagePath,
-      visible: song.visible ? 'true' : 'false'
+      visible: song.visible ? 'true' : 'false',
+      showInTop: song.showInTop !== false,
+      showInPortfolio: song.showInPortfolio !== false,
+      clientOrProject: song.clientOrProject || ''
     })
     setEditingSong(song)
     setShowAddForm(true)
@@ -136,7 +148,10 @@ export default function SongsAdmin() {
       originalTracks: song.originalTracks,
       audioPath: song.audioPath,
       coverImagePath: song.coverImagePath,
-      visible: song.visible ? 'true' : 'false'
+      visible: song.visible ? 'true' : 'false',
+      showInTop: song.showInTop !== false,
+      showInPortfolio: song.showInPortfolio !== false,
+      clientOrProject: song.clientOrProject || ''
     })
     setEditingSong(null) // 新規として扱う
     setShowAddForm(true)
@@ -156,7 +171,10 @@ export default function SongsAdmin() {
         body: JSON.stringify({ 
           id: editingSong.id, 
           ...formData,
-          visible: formData.visible === 'true'
+          visible: formData.visible === 'true',
+          showInTop: formData.showInTop,
+          showInPortfolio: formData.showInPortfolio,
+          clientOrProject: formData.clientOrProject.trim()
         })
       })
       
@@ -235,6 +253,32 @@ export default function SongsAdmin() {
       fetchSongs()
     } catch (err) {
       setError(err instanceof Error ? err.message : '表示状態の更新に失敗しました')
+    }
+  }
+
+  // 表示先（トップ / 実績）の直接トグル
+  const handleToggleField = async (song: Song, field: 'showInTop' | 'showInPortfolio') => {
+    clearMessages()
+    try {
+      const currentValue = song[field] !== false
+      const updatedSong = {
+        ...song,
+        [field]: !currentValue
+      }
+      const response = await authFetch('/api/songs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedSong)
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '表示先の更新に失敗しました')
+      }
+      const label = field === 'showInTop' ? 'トップ表示' : '実績表示'
+      setSuccessMessage(`「${song.title}」の${label}を切り替えました`)
+      fetchSongs()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '表示先の更新に失敗しました')
     }
   }
 
@@ -494,28 +538,6 @@ export default function SongsAdmin() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium mb-1">表示状態</label>
-                  <div className="flex items-center">
-                    <button
-                      type="button"
-                      onClick={handleToggleVisible}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                        formData.visible === 'true' ? 'bg-green-600' : 'bg-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          formData.visible === 'true' ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                    <span className="ml-3 text-sm">
-                      {formData.visible === 'true' ? '表示' : '非表示'}
-                    </span>
-                  </div>
-                </div>
-                
-                <div>
                   <label className="block text-sm font-medium mb-1">音声ファイルパス</label>
                   <div className="space-y-2">
                     <input
@@ -598,6 +620,63 @@ export default function SongsAdmin() {
                   </div>
                 </div>
               </div>
+
+              {/* 掲載設定 */}
+              <div className="p-4 bg-gray-800/80 rounded-lg border border-gray-700 space-y-3">
+                <span className="block text-sm font-semibold text-gray-200">掲載・表示設定</span>
+                <div className="flex flex-wrap gap-6 items-center">
+                  <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={handleToggleVisible}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        formData.visible === 'true' ? 'bg-green-600' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          formData.visible === 'true' ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                    <span className="ml-2 text-sm font-medium">
+                      全体公開: {formData.visible === 'true' ? '公開' : '非公開'}
+                    </span>
+                  </div>
+
+                  <label className="inline-flex items-center gap-2 cursor-pointer text-sm">
+                    <input
+                      type="checkbox"
+                      checked={formData.showInTop}
+                      onChange={(e) => setFormData(prev => ({ ...prev, showInTop: e.target.checked }))}
+                      className="w-4 h-4 rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-blue-300 font-medium">トップページに表示</span>
+                  </label>
+
+                  <label className="inline-flex items-center gap-2 cursor-pointer text-sm">
+                    <input
+                      type="checkbox"
+                      checked={formData.showInPortfolio}
+                      onChange={(e) => setFormData(prev => ({ ...prev, showInPortfolio: e.target.checked }))}
+                      className="w-4 h-4 rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-purple-300 font-medium">実績（ポートフォリオ）に表示</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">クライアント / 案件・用途名（任意）</label>
+                <input
+                  type="text"
+                  name="clientOrProject"
+                  value={formData.clientOrProject}
+                  onChange={handleInputChange}
+                  placeholder="例: 株式会社〇〇 / 個人VTuber 〇〇様 / 音ゲー提供楽曲"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
+                />
+              </div>
               
               <div>
                 <label className="block text-sm font-medium mb-1">説明</label>
@@ -672,27 +751,41 @@ export default function SongsAdmin() {
                       
                       {/* 楽曲情報 */}
                       <div className="flex-1">
-                        <div className="flex items-center gap-4 mb-2">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
                           <h3 className="text-lg font-semibold">{song.title}</h3>
-                          {/* 直接トグル可能な表示状態 */}
+                          
+                          {/* 全体公開状態トグル */}
                           <button
                             onClick={() => handleToggleVisibility(song)}
-                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                              song.visible ? 'bg-green-600' : 'bg-gray-600'
+                            className={`px-2 py-0.5 text-xs rounded font-medium transition-colors ${
+                              song.visible ? 'bg-green-600/30 text-green-300 border border-green-500/50' : 'bg-red-600/30 text-red-300 border border-red-500/50'
                             }`}
-                            title={`クリックで${song.visible ? '非表示' : '表示'}に切り替え`}
+                            title="クリックで全体公開/非表示を切り替え"
                           >
-                            <span
-                              className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                                song.visible ? 'translate-x-5' : 'translate-x-1'
-                              }`}
-                            />
+                            全体: {song.visible ? '公開' : '非公開'}
                           </button>
-                          <span className={`text-xs ${
-                            song.visible ? 'text-green-400' : 'text-red-400'
-                          }`}>
-                            {song.visible ? '表示' : '非表示'}
-                          </span>
+
+                          {/* トップ表示トグル */}
+                          <button
+                            onClick={() => handleToggleField(song, 'showInTop')}
+                            className={`px-2 py-0.5 text-xs rounded font-medium transition-colors ${
+                              song.showInTop !== false ? 'bg-blue-600/30 text-blue-300 border border-blue-500/50' : 'bg-gray-800 text-gray-400 border border-gray-700'
+                            }`}
+                            title="クリックでトップ表示を切り替え"
+                          >
+                            トップ: {song.showInTop !== false ? '表示' : '非表示'}
+                          </button>
+
+                          {/* 実績表示トグル */}
+                          <button
+                            onClick={() => handleToggleField(song, 'showInPortfolio')}
+                            className={`px-2 py-0.5 text-xs rounded font-medium transition-colors ${
+                              song.showInPortfolio !== false ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50' : 'bg-gray-800 text-gray-400 border border-gray-700'
+                            }`}
+                            title="クリックで実績表示を切り替え"
+                          >
+                            実績: {song.showInPortfolio !== false ? '表示' : '非表示'}
+                          </button>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm text-gray-400">
@@ -700,6 +793,7 @@ export default function SongsAdmin() {
                           <div>表示順: {song.order}</div>
                           <div>ジャンル: {song.genre}</div>
                           <div>リリース: {song.releaseDate}</div>
+                          {song.clientOrProject && <div className="md:col-span-2 lg:col-span-3 text-cyan-400 font-medium">案件・用途: {song.clientOrProject}</div>}
                           {song.description && <div className="md:col-span-2 lg:col-span-3">説明: {song.description}</div>}
                           {song.originalTracks && <div className="md:col-span-2 lg:col-span-3">オリジナル: {song.originalTracks}</div>}
                           {song.audioPath && <div className="md:col-span-2 lg:col-span-3">音声: {song.audioPath}</div>}

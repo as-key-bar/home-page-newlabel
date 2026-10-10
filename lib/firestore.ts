@@ -20,6 +20,9 @@ export interface Song {
   audioPath: string
   coverImagePath: string
   visible: boolean
+  showInTop?: boolean
+  showInPortfolio?: boolean
+  clientOrProject?: string
   createdAt?: Date
   updatedAt?: Date
 }
