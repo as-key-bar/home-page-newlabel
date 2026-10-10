@@ -988,34 +988,27 @@ export default function Home() {
               }}
             />
 
-            {/* 再生停止中アイコン（フィルター影響外） */}
+            {/* 再生ボタン（フィルター影響外・半透明黒円の直感的なデザイン） */}
             <div 
-              className={`absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out ${
-                currentlyPlaying !== parseInt(song.id) ? 'opacity-100' : 'opacity-0'
+              className={`absolute inset-0 flex items-center justify-center transition-all duration-700 ease-in-out pointer-events-none ${
+                currentlyPlaying !== parseInt(song.id) ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
               }`}
             >
-              <div className="relative">
-                {/* ブラー背景円 */}
-                <div 
-                  className="absolute inset-0 rounded-full  blur-sm"
-                  style={{
-                    width: '128px',
-                    height: '128px',
-                    transform: 'translate(-50%, -50%)',
-                    left: '50%',
-                    top: '50%'
-                  }}
-                />
-                {/* 三角形アイコン */}
-                <svg 
-                  className="w-16 h-16 md:w-24 md:h-24 text-transparent drop-shadow-lg relative z-10" 
-                  fill="currentColor" 
-                  viewBox="0 0 24 24"
-                  stroke="white"
-                  strokeWidth="2"
-                >
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
+              <div className="flex flex-col items-center justify-center space-y-2">
+                {/* 円形ボタンスタイル */}
+                <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-black/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex items-center justify-center transition-all duration-300">
+                  {/* 三角形アイコン（光学的に中央に見えるよう右にわずかにシフト） */}
+                  <svg 
+                    className="w-8 h-8 md:w-12 md:h-12 text-white fill-white translate-x-0.5 drop-shadow-md" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                </div>
+                {/* 補助ラベル */}
+                <span className="text-white text-xs md:text-sm font-semibold tracking-widest drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase select-none">
+                  PLAY
+                </span>
               </div>
             </div>
 
