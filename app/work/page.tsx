@@ -260,7 +260,7 @@ export default function WorkPage() {
         {/* ========================================================================= */}
         <section id="about" className="scroll-mt-20">
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-xs font-mono text-cyan-400 tracking-wider uppercase">// 01. ABOUT & SKILLS</span>
+            <span className="text-xs font-mono text-cyan-400 tracking-wider uppercase">{'// 01. ABOUT & SKILLS'}</span>
             <div className="flex-1 h-px bg-white/10"></div>
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
@@ -326,7 +326,7 @@ export default function WorkPage() {
         {/* ========================================================================= */}
         <section id="works" className="scroll-mt-20">
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-xs font-mono text-cyan-400 tracking-wider uppercase">// 02. WORKS & PORTFOLIO</span>
+            <span className="text-xs font-mono text-cyan-400 tracking-wider uppercase">{'// 02. WORKS & PORTFOLIO'}</span>
             <div className="flex-1 h-px bg-white/10"></div>
           </div>
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
@@ -499,7 +499,7 @@ export default function WorkPage() {
         {/* ========================================================================= */}
         <section id="price" className="scroll-mt-20">
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-xs font-mono text-cyan-400 tracking-wider uppercase">// 03. PRICING & TERMS</span>
+            <span className="text-xs font-mono text-cyan-400 tracking-wider uppercase">{'// 03. PRICING & TERMS'}</span>
             <div className="flex-1 h-px bg-white/10"></div>
           </div>
           <div className="mb-8">
@@ -670,7 +670,7 @@ export default function WorkPage() {
           {/* 制作の流れ */}
           <div className="p-6 rounded-xl bg-black/40 border border-white/10">
             <h4 className="text-sm font-bold text-white mb-6 font-mono uppercase tracking-wide">
-              // 制作の流れ (Workflow)
+              {'// 制作の流れ (Workflow)'}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 relative">
               <div className="space-y-2">
@@ -714,7 +714,7 @@ export default function WorkPage() {
         {/* ========================================================================= */}
         <section id="links" className="scroll-mt-20">
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-xs font-mono text-cyan-400 tracking-wider uppercase">// 04. OFFICIAL LINKS</span>
+            <span className="text-xs font-mono text-cyan-400 tracking-wider uppercase">{'// 04. OFFICIAL LINKS'}</span>
             <div className="flex-1 h-px bg-white/10"></div>
           </div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-6">

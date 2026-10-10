@@ -21,8 +21,35 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: ".new label - official website",
-  description: "新しいポップ音楽を探る個人レーベルの公式ウェブサイト。",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://newlabel.jp'),
+  title: {
+    default: '.new label - official website / 音楽制作・楽曲提供・料金表',
+    template: '%s | .new label'
+  },
+  description: '外連味ある展開と大胆なアレンジ、キャッチーかつ斬新な音像。音楽レーベル「.new label」の公式ウェブサイト。楽曲試聴、制作実績、制作料金表（インスト4万円〜 / 歌モノ7万円〜）掲載中。',
+  openGraph: {
+    title: '.new label - 公式HP & 楽曲制作料金表・実績ポートフォリオ',
+    description: '音楽レーベル「.new label」公式サイト。制作実績、得意ジャンル、楽曲制作の料金表（インスト4万円〜/歌モノ7万円〜）を掲載中。',
+    url: 'https://newlabel.jp',
+    siteName: '.new label',
+    locale: 'ja_JP',
+    type: 'website',
+    images: [
+      {
+        url: '/images/newlabel_logo.png',
+        width: 1200,
+        height: 630,
+        alt: '.new label official website & price list',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '.new label - 公式HP & 楽曲制作料金表・実績ポートフォリオ',
+    description: '音楽レーベル「.new label」公式サイト。制作実績、得意ジャンル、楽曲制作の料金表（インスト4万円〜/歌モノ7万円〜）を掲載中。',
+    creator: '@askey_Azukibar',
+    images: ['/images/newlabel_logo.png'],
+  },
   icons: {
     icon: [
       {
