@@ -140,7 +140,8 @@ export default function SlideMenu({ volume = 0.1, onVolumeChange, isLoading = fa
               onClick={closeMenu}
               className="block text-xl font-medium text-black hover:text-gray-600 transition-colors"
             >
-              Work
+              Works & About
+              <span className="block text-xs text-gray-500 font-normal mt-0.5">制作実績・料金表・強み</span>
             </Link>
             <Link
               href="/contact"
