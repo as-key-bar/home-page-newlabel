@@ -521,7 +521,7 @@ export default function Home() {
       {loading && <LoadingScreen isExiting={isExiting} />}
       
       {/* メインコンテンツ */}
-    <div className="relative">
+    <div className="relative select-none">
       {/* 画面両端のドット列 */}
       <div className="fixed left-0 top-0 w-4 h-screen z-50 overflow-hidden">
         <div
@@ -697,7 +697,7 @@ export default function Home() {
         >
           {profile && (
             <>
-              <section className="bg-white/90 rounded-lg shadow-md p-3 w-full max-w-3xl mx-auto">
+              <section className="bg-white/90 rounded-lg shadow-md p-3 w-full max-w-3xl mx-auto select-text cursor-auto">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 text-center">
                 Profile
               </h2>
@@ -1088,7 +1088,7 @@ export default function Home() {
       ))}
 
       {/* メインコンテンツ */}
-      <main className="relative z-10">
+      <main className="relative z-10 pointer-events-none select-none">
         <div className="max-w-4xl mx-auto px-4 py-8">
           {songs.length === 0 ? (
             <div className="text-center py-12">
