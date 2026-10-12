@@ -1,17 +1,14 @@
 import { NextResponse } from 'next/server'
-import { getLicense } from '@/lib/firestore'
+import { getLicenseAdmin } from '@/lib/firestore-admin'
 
 export async function GET() {
   try {
-    const license = await getLicense()
-    
-    if (!license) {
-      return NextResponse.json({ error: 'License data not found' }, { status: 404 })
-    }
-    
+    const license = await getLicenseAdmin()
     return NextResponse.json(license)
   } catch (error) {
     console.error('Error getting license data:', error)
-    return NextResponse.json({ error: 'Failed to load license data' }, { status: 500 })
+    // エラー時でも静的フォールバックを返してページ表示を壊さない
+    const { defaultLicense } = await import('@/lib/fallback-data')
+    return NextResponse.json(defaultLicense)
   }
 }

@@ -21,29 +21,27 @@ interface License {
   }
 }
 
+import { defaultLicense } from '../../lib/fallback-data'
+
 export default function License() {
-  const [license, setLicense] = useState<License | null>(null)
+  const [license, setLicense] = useState<License>(defaultLicense)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/license')
       .then(res => res.json())
       .then(data => {
-        if (data && !data.error) {
+        if (data && !data.error && data.sections) {
           setLicense(data)
-        } else {
-          setError('利用規約の読み込みに失敗しました')
         }
       })
       .catch(err => {
-        setError('利用規約の読み込みに失敗しました')
-        console.error('License fetch error:', err)
+        console.warn('License fetch error, using fallback:', err)
       })
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) {
+  if (loading && !license) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -53,15 +51,6 @@ export default function License() {
     )
   }
 
-  if (error || !license) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
