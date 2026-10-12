@@ -1,17 +1,13 @@
 import { NextResponse } from 'next/server'
-import { getProfile } from '@/lib/firestore'
+import { getProfileAdmin } from '@/lib/firestore-admin'
 
 export async function GET() {
   try {
-    const profile = await getProfile()
-    
-    if (!profile) {
-      return NextResponse.json({ error: 'Profile data not found' }, { status: 404 })
-    }
-    
+    const profile = await getProfileAdmin()
     return NextResponse.json(profile)
   } catch (error) {
     console.error('Error getting profile:', error)
-    return NextResponse.json({ error: 'Failed to load profile' }, { status: 500 })
+    const { defaultProfile } = await import('@/lib/fallback-data')
+    return NextResponse.json(defaultProfile)
   }
 }

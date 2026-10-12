@@ -1,6 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminDb } from './firebase-admin'
-import { getSong, getSongs, Song } from './firestore'
+import type { Song, License, Profile } from './firestore'
 
 // 書き込み系操作（Admin SDK 経由。Firestore ルールの対象外）
 
@@ -55,20 +55,22 @@ export async function updateSong(id: string, updates: Partial<Song>): Promise<vo
 // 楽曲削除
 export async function deleteSong(id: string): Promise<void> {
   try {
-    const song = await getSong(id)
-    if (!song) {
+    const db = getAdminDb()
+    const songDoc = await db.collection('songs').doc(id).get()
+    if (!songDoc.exists) {
       throw new Error('楽曲が見つかりません')
     }
+    const songData = songDoc.data() as Song
 
-    const db = getAdminDb()
     await db.collection('songs').doc(id).delete()
 
     // 削除された楽曲より下位の楽曲の表示順を1つずつ上げる
-    const songs = await getSongs()
+    const songsSnapshot = await db.collection('songs').get()
     const batch = db.batch()
-    for (const remaining of songs) {
-      if (remaining.order > song.order) {
-        batch.update(db.collection('songs').doc(remaining.id), {
+    for (const doc of songsSnapshot.docs) {
+      const remaining = doc.data() as Song
+      if (remaining.order > songData.order) {
+        batch.update(doc.ref, {
           order: remaining.order - 1,
           updatedAt: FieldValue.serverTimestamp()
         })
@@ -98,4 +100,46 @@ export async function reorderSongs(songIds: string[]): Promise<void> {
     throw new Error('楽曲順序の変更に失敗しました')
   }
 }
+
+// ライセンス取得（Admin SDK 経由・フォールバック保証付き）
+export async function getLicenseAdmin(): Promise<License> {
+  const { defaultLicense } = await import('./fallback-data')
+  try {
+    const db = getAdminDb()
+    const doc = await db.collection('settings').doc('license').get()
+    if (doc.exists) {
+      return doc.data() as License
+    }
+    // 未設定の場合は初期データを自動保存
+    try {
+      await db.collection('settings').doc('license').set({
+        ...defaultLicense,
+        updatedAt: FieldValue.serverTimestamp()
+      })
+    } catch (saveErr) {
+      console.warn('ライセンス初期データ保存スキップ:', saveErr)
+    }
+    return defaultLicense
+  } catch (error) {
+    console.warn('ライセンスデータ取得失敗のためフォールバックを使用:', error)
+    return defaultLicense
+  }
+}
+
+// プロフィール取得（Admin SDK 経由・フォールバック保証付き）
+export async function getProfileAdmin(): Promise<Profile> {
+  const { defaultProfile } = await import('./fallback-data')
+  try {
+    const db = getAdminDb()
+    const doc = await db.collection('settings').doc('profile').get()
+    if (doc.exists) {
+      return doc.data() as Profile
+    }
+    return defaultProfile
+  } catch (error) {
+    console.warn('プロフィールデータ取得失敗のためフォールバックを使用:', error)
+    return defaultProfile
+  }
+}
+
 
