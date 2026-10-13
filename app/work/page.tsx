@@ -363,8 +363,15 @@ export default function WorkPage() {
                           {song.title}
                         </h3>
 
+                        {/* 仕事実績紹介（workページ限定表示） */}
+                        {song.workDescription && (
+                          <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 mt-1 leading-relaxed">
+                            {song.workDescription}
+                          </p>
+                        )}
+
                         {song.description && (
-                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-1 mt-0.5">
+                          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mt-0.5">
                             {song.description}
                           </p>
                         )}

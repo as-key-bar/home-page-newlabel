@@ -23,6 +23,7 @@ export interface Song {
   showInTop?: boolean
   showInPortfolio?: boolean
   clientOrProject?: string
+  workDescription?: string
   createdAt?: Date
   updatedAt?: Date
 }
