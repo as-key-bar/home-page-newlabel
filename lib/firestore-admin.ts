@@ -1,6 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminDb } from './firebase-admin'
-import type { Song, License, Profile } from './firestore'
+import type { Song, License, Profile, MovieWork, DesignWork } from './firestore'
 
 // 書き込み系操作（Admin SDK 経由。Firestore ルールの対象外）
 
@@ -141,5 +141,228 @@ export async function getProfileAdmin(): Promise<Profile> {
     return defaultProfile
   }
 }
+
+// ==========================================
+// 動画実績 (Movies) 操作
+// ==========================================
+
+export async function getMoviesAdmin(): Promise<MovieWork[]> {
+  const { defaultMovies } = await import('./fallback-data')
+  try {
+    const db = getAdminDb()
+    const snapshot = await db.collection('movies').orderBy('order', 'asc').get()
+    if (snapshot.empty) {
+      return defaultMovies
+    }
+    return snapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id
+    })) as MovieWork[]
+  } catch (error) {
+    console.warn('動画データ取得失敗のためフォールバックを使用:', error)
+    return defaultMovies
+  }
+}
+
+export async function addMovie(movieData: Omit<MovieWork, 'id' | 'createdAt' | 'updatedAt'>): Promise<MovieWork> {
+  try {
+    const db = getAdminDb()
+    const snapshot = await db.collection('movies').get()
+    const maxId = Math.max(...snapshot.docs.map(d => parseInt(d.id) || 0), 0)
+    const newId = (maxId + 1).toString()
+
+    const batch = db.batch()
+    for (const d of snapshot.docs) {
+      batch.update(d.ref, { order: (d.data().order ?? 0) + 1, updatedAt: FieldValue.serverTimestamp() })
+    }
+
+    const newMovie = {
+      ...movieData,
+      id: newId,
+      order: 1,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
+    }
+    batch.set(db.collection('movies').doc(newId), newMovie)
+    await batch.commit()
+    return { ...movieData, id: newId, order: 1 } as MovieWork
+  } catch (error) {
+    console.error('動画追加エラー:', error)
+    throw new Error('動画の追加に失敗しました')
+  }
+}
+
+export async function updateMovie(id: string, updates: Partial<MovieWork>): Promise<void> {
+  try {
+    const { id: _id, createdAt: _createdAt, ...rest } = updates
+    void _id
+    void _createdAt
+    await getAdminDb().collection('movies').doc(id).update({
+      ...rest,
+      updatedAt: FieldValue.serverTimestamp()
+    })
+  } catch (error) {
+    console.error('動画更新エラー:', error)
+    throw new Error('動画の更新に失敗しました')
+  }
+}
+
+export async function deleteMovie(id: string): Promise<void> {
+  try {
+    const db = getAdminDb()
+    const docRef = db.collection('movies').doc(id)
+    const docSnap = await docRef.get()
+    if (!docSnap.exists) {
+      throw new Error('動画が見つかりません')
+    }
+    const movieData = docSnap.data() as MovieWork
+    await docRef.delete()
+
+    const snapshot = await db.collection('movies').get()
+    const batch = db.batch()
+    for (const d of snapshot.docs) {
+      const remaining = d.data() as MovieWork
+      if (remaining.order > movieData.order) {
+        batch.update(d.ref, {
+          order: remaining.order - 1,
+          updatedAt: FieldValue.serverTimestamp()
+        })
+      }
+    }
+    await batch.commit()
+  } catch (error) {
+    console.error('動画削除エラー:', error)
+    throw new Error('動画の削除に失敗しました')
+  }
+}
+
+export async function reorderMovies(movieIds: string[]): Promise<void> {
+  try {
+    const db = getAdminDb()
+    const batch = db.batch()
+    movieIds.forEach((id, i) => {
+      batch.update(db.collection('movies').doc(id), {
+        order: i + 1,
+        updatedAt: FieldValue.serverTimestamp()
+      })
+    })
+    await batch.commit()
+  } catch (error) {
+    console.error('動画順序変更エラー:', error)
+    throw new Error('動画順序の変更に失敗しました')
+  }
+}
+
+// ==========================================
+// デザイン実績 (Designs) 操作
+// ==========================================
+
+export async function getDesignsAdmin(): Promise<DesignWork[]> {
+  const { defaultDesigns } = await import('./fallback-data')
+  try {
+    const db = getAdminDb()
+    const snapshot = await db.collection('designs').orderBy('order', 'asc').get()
+    if (snapshot.empty) {
+      return defaultDesigns
+    }
+    return snapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id
+    })) as DesignWork[]
+  } catch (error) {
+    console.warn('デザインデータ取得失敗のためフォールバックを使用:', error)
+    return defaultDesigns
+  }
+}
+
+export async function addDesign(designData: Omit<DesignWork, 'id' | 'createdAt' | 'updatedAt'>): Promise<DesignWork> {
+  try {
+    const db = getAdminDb()
+    const snapshot = await db.collection('designs').get()
+    const maxId = Math.max(...snapshot.docs.map(d => parseInt(d.id) || 0), 0)
+    const newId = (maxId + 1).toString()
+
+    const batch = db.batch()
+    for (const d of snapshot.docs) {
+      batch.update(d.ref, { order: (d.data().order ?? 0) + 1, updatedAt: FieldValue.serverTimestamp() })
+    }
+
+    const newDesign = {
+      ...designData,
+      id: newId,
+      order: 1,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
+    }
+    batch.set(db.collection('designs').doc(newId), newDesign)
+    await batch.commit()
+    return { ...designData, id: newId, order: 1 } as DesignWork
+  } catch (error) {
+    console.error('デザイン追加エラー:', error)
+    throw new Error('デザインの追加に失敗しました')
+  }
+}
+
+export async function updateDesign(id: string, updates: Partial<DesignWork>): Promise<void> {
+  try {
+    const { id: _id, createdAt: _createdAt, ...rest } = updates
+    void _id
+    void _createdAt
+    await getAdminDb().collection('designs').doc(id).update({
+      ...rest,
+      updatedAt: FieldValue.serverTimestamp()
+    })
+  } catch (error) {
+    console.error('デザイン更新エラー:', error)
+    throw new Error('デザインの更新に失敗しました')
+  }
+}
+
+export async function deleteDesign(id: string): Promise<void> {
+  try {
+    const db = getAdminDb()
+    const docRef = db.collection('designs').doc(id)
+    const docSnap = await docRef.get()
+    if (!docSnap.exists) {
+      throw new Error('デザインが見つかりません')
+    }
+    const designData = docSnap.data() as DesignWork
+    await docRef.delete()
+
+    const snapshot = await db.collection('designs').get()
+    const batch = db.batch()
+    for (const d of snapshot.docs) {
+      const remaining = d.data() as DesignWork
+      if (remaining.order > designData.order) {
+        batch.update(d.ref, {
+          order: remaining.order - 1,
+          updatedAt: FieldValue.serverTimestamp()
+        })
+      }
+    }
+    await batch.commit()
+  } catch (error) {
+    console.error('デザイン削除エラー:', error)
+    throw new Error('デザインの削除に失敗しました')
+  }
+}
+
+export async function reorderDesigns(designIds: string[]): Promise<void> {
+  try {
+    const db = getAdminDb()
+    const batch = db.batch()
+    designIds.forEach((id, i) => {
+      batch.update(db.collection('designs').doc(id), {
+        order: i + 1,
+        updatedAt: FieldValue.serverTimestamp()
+      })
+    })
+    await batch.commit()
+  } catch (error) {
+    console.error('デザイン順序変更エラー:', error)
+    throw new Error('デザイン順序の変更に失敗しました')
+  }
+}
+
 
 

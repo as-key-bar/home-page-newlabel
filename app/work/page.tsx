@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Song } from '../../lib/firestore'
+import { Song, MovieWork, DesignWork } from '../../lib/firestore'
+import { getYoutubeEmbedUrl } from '../../lib/youtube'
 import SlideMenu from '../../components/SlideMenu'
 
 interface WorkLink {
@@ -14,7 +15,13 @@ interface WorkLink {
 
 export default function WorkPage() {
   const [songs, setSongs] = useState<Song[]>([])
+  const [movies, setMovies] = useState<MovieWork[]>([])
+  const [designs, setDesigns] = useState<DesignWork[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMovies, setLoadingMovies] = useState(true)
+  const [loadingDesigns, setLoadingDesigns] = useState(true)
+  const [activeTab, setActiveTab] = useState<'music' | 'movie' | 'design'>('music')
+  const [selectedDesign, setSelectedDesign] = useState<DesignWork | null>(null)
   const [currentPlayingId, setCurrentPlayingId] = useState<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -75,6 +82,54 @@ export default function WorkPage() {
 
     loadWorks()
 
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // 動画実績データ取得
+  useEffect(() => {
+    let isMounted = true
+    const loadMovies = async () => {
+      try {
+        const res = await fetch('/api/movies')
+        if (res.ok) {
+          const data = await res.json()
+          if (data && Array.isArray(data.movies)) {
+            if (isMounted) setMovies(data.movies)
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load movies from API:', err)
+      } finally {
+        if (isMounted) setLoadingMovies(false)
+      }
+    }
+    loadMovies()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // デザイン実績データ取得
+  useEffect(() => {
+    let isMounted = true
+    const loadDesigns = async () => {
+      try {
+        const res = await fetch('/api/designs')
+        if (res.ok) {
+          const data = await res.json()
+          if (data && Array.isArray(data.designs)) {
+            if (isMounted) setDesigns(data.designs)
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load designs from API:', err)
+      } finally {
+        if (isMounted) setLoadingDesigns(false)
+      }
+    }
+    loadDesigns()
     return () => {
       isMounted = false
     }
@@ -267,22 +322,73 @@ export default function WorkPage() {
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
 
         {/* ========================================================================= */}
-        {/* 1. Works カード: 制作実績 & 試聴プレイヤー */}
+        {/* 1. Works カード: 制作実績（楽曲・動画・デザイン） */}
         {/* ========================================================================= */}
         <section className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 sm:p-8 border border-gray-200 dark:border-gray-700">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              制作実績・楽曲試聴
+              制作実績
             </h2>
             <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-              これまでに制作・リリースした楽曲の一部です。各カードの再生ボタンよりご試聴いただけます。
+              これまでに制作・提供した楽曲、動画、デザインなどの制作実績です。
             </p>
           </div>
 
-          {loading ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">
-              楽曲データを読み込み中...
-            </div>
+          {/* 実績カテゴリタブ */}
+          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6 gap-2 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab('music')}
+              className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                activeTab === 'music'
+                  ? 'border-black dark:border-white text-gray-900 dark:text-white'
+                  : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              <span>楽曲試聴</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono">
+                {songs.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('movie')}
+              className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                activeTab === 'movie'
+                  ? 'border-black dark:border-white text-gray-900 dark:text-white'
+                  : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              <span>動画実績</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono">
+                {movies.filter(m => m.visible !== false).length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('design')}
+              className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                activeTab === 'design'
+                  ? 'border-black dark:border-white text-gray-900 dark:text-white'
+                  : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              <span>デザイン実績</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono">
+                {designs.filter(d => d.visible !== false).length}
+              </span>
+            </button>
+          </div>
+
+          {/* 1. 楽曲実績タブ */}
+          {activeTab === 'music' && (
+            <div>
+              {loading ? (
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">
+                  楽曲データを読み込み中...
+                </div>
           ) : songs.length === 0 ? (
             <div className="text-center py-10 text-gray-500 dark:text-gray-400 text-sm border border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
               現在公開可能な楽曲を準備中です。
@@ -468,6 +574,156 @@ export default function WorkPage() {
                   </div>
                 )
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+          {/* 2. 動画実績タブ */}
+          {activeTab === 'movie' && (
+            <div>
+              {loadingMovies ? (
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">
+                  動画データを読み込み中...
+                </div>
+              ) : movies.filter(m => m.visible !== false).length === 0 ? (
+                <div className="text-center py-10 text-gray-500 dark:text-gray-400 text-sm border border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
+                  現在公開可能な動画実績を準備中です。
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {movies.filter(m => m.visible !== false).map((movie) => {
+                    const embedUrl = getYoutubeEmbedUrl(movie.youtubeUrl)
+                    return (
+                      <div
+                        key={movie.id}
+                        className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40 overflow-hidden flex flex-col shadow-sm"
+                      >
+                        {/* YouTube 埋め込み */}
+                        <div className="aspect-video w-full bg-black">
+                          {embedUrl ? (
+                            <iframe
+                              src={embedUrl}
+                              title={movie.title}
+                              className="w-full h-full border-0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
+                              動画を読み込めません
+                            </div>
+                          )}
+                        </div>
+
+                        {/* メタ情報 */}
+                        <div className="p-4 flex-1 flex flex-col justify-between">
+                          <div>
+                            <h3 className="font-semibold text-base text-gray-900 dark:text-white mb-1.5">
+                              {movie.title}
+                            </h3>
+                            <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
+                              {movie.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 3. デザイン実績タブ */}
+          {activeTab === 'design' && (
+            <div>
+              {loadingDesigns ? (
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">
+                  デザインデータを読み込み中...
+                </div>
+              ) : designs.filter(d => d.visible !== false).length === 0 ? (
+                <div className="text-center py-10 text-gray-500 dark:text-gray-400 text-sm border border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
+                  現在公開可能なデザイン実績を準備中です。
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {designs.filter(d => d.visible !== false).map((design) => (
+                    <div
+                      key={design.id}
+                      onClick={() => setSelectedDesign(design)}
+                      className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40 overflow-hidden flex flex-col group cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-all shadow-sm"
+                    >
+                      {/* 画像エリア */}
+                      <div className="aspect-square w-full bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center relative">
+                        <img
+                          src={design.imagePath}
+                          alt={design.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium">
+                          拡大表示 🔍
+                        </div>
+                      </div>
+
+                      {/* メタ情報 */}
+                      <div className="p-4 flex-1 flex flex-col justify-between">
+                        <div>
+                          <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white mb-1">
+                            {design.title}
+                          </h3>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line">
+                            {design.description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 拡大プレビューモーダル */}
+              {selectedDesign && (
+                <div
+                  className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+                  onClick={() => setSelectedDesign(null)}
+                >
+                  <div
+                    className="bg-white dark:bg-gray-900 rounded-xl max-w-3xl w-full p-4 sm:p-6 overflow-hidden max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-700 shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-bold text-lg text-gray-900 dark:text-white">
+                          {selectedDesign.title}
+                        </h3>
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5 whitespace-pre-line">
+                          {selectedDesign.description}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDesign(null)}
+                        className="p-1 rounded-lg text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white text-xl"
+                        aria-label="閉じる"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-auto flex items-center justify-center bg-black/5 dark:bg-black/40 rounded-lg p-2 min-h-0">
+                      <img
+                        src={selectedDesign.imagePath}
+                        alt={selectedDesign.title}
+                        className="max-h-[65vh] w-auto max-w-full object-contain rounded"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>

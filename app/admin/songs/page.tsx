@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Song } from '../../api/songs/route'
 import AuthGuard from '../../../components/AuthGuard'
+import AdminNav from '../../../components/AdminNav'
 import { useAuth } from '../../../contexts/AuthContext'
 import { storage } from '../../../lib/firebase'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
@@ -460,19 +461,26 @@ export default function SongsAdmin() {
     <AuthGuard>
       <div className="min-h-screen bg-black text-white p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">楽曲管理</h1>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-400">
-                ログイン中: {user?.email}
-              </span>
-              <button
-                onClick={logout}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors text-sm"
-              >
-                ログアウト
-              </button>
+          <AdminNav />
+
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-2xl font-bold">楽曲管理（/admin/songs）</h1>
+              <p className="text-xs text-gray-400 mt-1">
+                トップページや制作実績ページの「楽曲実績」に掲載する楽曲を登録・編集します。
+              </p>
             </div>
+            {!showAddForm && (
+              <button
+                onClick={() => {
+                  resetForm()
+                  setShowAddForm(true)
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                ＋ 新規楽曲追加
+              </button>
+            )}
           </div>
         
         {/* メッセージ表示 */}
@@ -487,16 +495,6 @@ export default function SongsAdmin() {
             {successMessage}
           </div>
         )}
-
-        {/* 追加ボタン */}
-        <div className="mb-6">
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-          >
-            新規楽曲追加
-          </button>
-        </div>
 
         {/* 追加/編集フォーム */}
         {showAddForm && (

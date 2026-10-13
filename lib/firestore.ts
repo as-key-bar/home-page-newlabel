@@ -28,6 +28,28 @@ export interface Song {
   updatedAt?: Date
 }
 
+export interface MovieWork {
+  id: string
+  order: number
+  title: string
+  youtubeUrl: string
+  description: string
+  visible: boolean
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+export interface DesignWork {
+  id: string
+  order: number
+  title: string
+  imagePath: string
+  description: string
+  visible: boolean
+  createdAt?: Date
+  updatedAt?: Date
+}
+
 export interface LicenseSection {
   id: string
   title: string
@@ -162,5 +184,37 @@ export async function getProfile(): Promise<Profile | null> {
   } catch (error) {
     console.error('プロフィール情報取得エラー:', error)
     throw new Error('プロフィール情報の取得に失敗しました')
+  }
+}
+
+// 動画実績データ取得
+export async function getMovies(): Promise<MovieWork[]> {
+  try {
+    const moviesRef = collection(db, 'movies')
+    const q = query(moviesRef, orderBy('order', 'asc'))
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id,
+    })) as MovieWork[]
+  } catch (error) {
+    console.warn('動画実績データ取得失敗:', error)
+    return []
+  }
+}
+
+// デザイン実績データ取得
+export async function getDesigns(): Promise<DesignWork[]> {
+  try {
+    const designsRef = collection(db, 'designs')
+    const q = query(designsRef, orderBy('order', 'asc'))
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id,
+    })) as DesignWork[]
+  } catch (error) {
+    console.warn('デザイン実績データ取得失敗:', error)
+    return []
   }
 }

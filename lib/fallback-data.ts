@@ -1,4 +1,4 @@
-import { License, Profile } from './firestore'
+import { License, Profile, MovieWork, DesignWork } from './firestore'
 
 export const defaultLicense: License = {
   title: '楽曲利用規約',
@@ -68,3 +68,24 @@ export const defaultProfile: Profile = {
   profileImage: '/images/icon.jpg'
 }
 
+export const defaultMovies: MovieWork[] = [
+  {
+    id: '1',
+    order: 1,
+    title: '幽閉フラクタル 告知MV',
+    youtubeUrl: 'https://www.youtube.com/watch?v=0k2xQh48G8s',
+    description: 'サークル「幽閉フラクタル」様のご依頼で製作',
+    visible: true
+  }
+]
+
+export const defaultDesigns: DesignWork[] = [
+  {
+    id: '1',
+    order: 1,
+    title: 'CDジャケット・ロゴデザイン',
+    imagePath: '/images/newlabel_logo.png',
+    description: 'アルバムアートワークおよびロゴデザインの制作',
+    visible: true
+  }
+]
