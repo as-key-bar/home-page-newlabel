@@ -41,7 +41,8 @@ export default function SongsAdmin() {
     visible: 'true',
     showInTop: true,
     showInPortfolio: true,
-    clientOrProject: ''
+    clientOrProject: '',
+    workDescription: ''
   })
 
   // 楽曲一覧を取得
@@ -76,7 +77,8 @@ export default function SongsAdmin() {
       visible: 'true',
       showInTop: true,
       showInPortfolio: true,
-      clientOrProject: ''
+      clientOrProject: '',
+      workDescription: ''
     })
     setEditingSong(null)
     setShowAddForm(false)
@@ -102,7 +104,8 @@ export default function SongsAdmin() {
           visible: formData.visible === 'true',
           showInTop: formData.showInTop,
           showInPortfolio: formData.showInPortfolio,
-          clientOrProject: formData.clientOrProject.trim()
+          clientOrProject: formData.clientOrProject.trim(),
+          workDescription: formData.workDescription.trim()
         })
       })
       
@@ -132,7 +135,8 @@ export default function SongsAdmin() {
       visible: song.visible ? 'true' : 'false',
       showInTop: song.showInTop !== false,
       showInPortfolio: song.showInPortfolio !== false,
-      clientOrProject: song.clientOrProject || ''
+      clientOrProject: song.clientOrProject || '',
+      workDescription: song.workDescription || ''
     })
     setEditingSong(song)
     setShowAddForm(true)
@@ -151,7 +155,8 @@ export default function SongsAdmin() {
       visible: song.visible ? 'true' : 'false',
       showInTop: song.showInTop !== false,
       showInPortfolio: song.showInPortfolio !== false,
-      clientOrProject: song.clientOrProject || ''
+      clientOrProject: song.clientOrProject || '',
+      workDescription: song.workDescription || ''
     })
     setEditingSong(null) // 新規として扱う
     setShowAddForm(true)
@@ -174,7 +179,8 @@ export default function SongsAdmin() {
           visible: formData.visible === 'true',
           showInTop: formData.showInTop,
           showInPortfolio: formData.showInPortfolio,
-          clientOrProject: formData.clientOrProject.trim()
+          clientOrProject: formData.clientOrProject.trim(),
+          workDescription: formData.workDescription.trim()
         })
       })
       
@@ -677,6 +683,21 @@ export default function SongsAdmin() {
                   className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">仕事実績紹介（Worksページ限定表示）</label>
+                <textarea
+                  name="workDescription"
+                  value={formData.workDescription}
+                  onChange={handleInputChange}
+                  rows={2}
+                  placeholder="例: AQUASTYLE様のご依頼で、PC/Switch向け音楽ゲーム「ダンマクカグラ ファンタジア・ロスト」に書下ろしさせて頂きました。"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
+                />
+                <span className="text-xs text-gray-400">
+                  ※ /work ページの各楽曲カードにのみ表示される仕事の概要・背景説明です（トップページには表示されません）。
+                </span>
+              </div>
               
               <div>
                 <label className="block text-sm font-medium mb-1">説明</label>
@@ -794,6 +815,7 @@ export default function SongsAdmin() {
                           <div>ジャンル: {song.genre}</div>
                           <div>リリース: {song.releaseDate}</div>
                           {song.clientOrProject && <div className="md:col-span-2 lg:col-span-3 text-cyan-400 font-medium">案件・用途: {song.clientOrProject}</div>}
+                          {song.workDescription && <div className="md:col-span-2 lg:col-span-3 text-emerald-400 font-medium">実績紹介(/work): {song.workDescription}</div>}
                           {song.description && <div className="md:col-span-2 lg:col-span-3">説明: {song.description}</div>}
                           {song.originalTracks && <div className="md:col-span-2 lg:col-span-3">オリジナル: {song.originalTracks}</div>}
                           {song.audioPath && <div className="md:col-span-2 lg:col-span-3">音声: {song.audioPath}</div>}
