@@ -19,9 +19,9 @@ export default function WorkPage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [volume, setVolume] = useState(0.7)
+  const [volume, setVolume] = useState(0.15)
   const [isMuted, setIsMuted] = useState(false)
-  const [prevVolume, setPrevVolume] = useState(0.7)
+  const [prevVolume, setPrevVolume] = useState(0.15)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // 楽曲データ取得
@@ -151,7 +151,7 @@ export default function WorkPage() {
   // ミュート切り替え
   const toggleMute = () => {
     if (isMuted) {
-      const restored = prevVolume > 0 ? prevVolume : 0.7
+      const restored = prevVolume > 0 ? prevVolume : 0.15
       setVolume(restored)
       setIsMuted(false)
       if (audioRef.current) {
