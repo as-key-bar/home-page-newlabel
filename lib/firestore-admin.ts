@@ -4,6 +4,29 @@ import type { Song, License, Profile, MovieWork, DesignWork } from './firestore'
 
 // 書き込み系操作（Admin SDK 経由。Firestore ルールの対象外）
 
+// 楽曲一覧取得（Admin SDK 経由・クライアントSDKフォールバック付き）
+export async function getSongsAdmin(): Promise<Song[]> {
+  try {
+    const db = getAdminDb()
+    const snapshot = await db.collection('songs').get()
+    const songs = snapshot.docs.map((doc, index) => {
+      const data = doc.data()
+      return {
+        ...data,
+        id: doc.id,
+        order: typeof data.order === 'number' ? data.order : index + 1,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
+      }
+    }) as Song[]
+    return songs.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999))
+  } catch (adminError) {
+    console.warn('Admin SDK での楽曲取得失敗、クライアントSDKにフォールバック:', adminError)
+    const { getSongs } = await import('./firestore')
+    return getSongs()
+  }
+}
+
 // 楽曲追加
 export async function addSong(songData: Omit<Song, 'id' | 'createdAt' | 'updatedAt'>): Promise<Song> {
   try {

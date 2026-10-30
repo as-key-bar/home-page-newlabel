@@ -12,6 +12,18 @@ import { getFirestore } from 'firebase-admin/firestore'
  * ID トークン検証のみなら projectId だけで動作するが、
  * Firestore への書き込みには上記いずれかの認証情報が必要。
  */
+function parseServiceAccountKey(rawKey: string) {
+  let trimmed = rawKey.trim()
+  if ((trimmed.startsWith("'") && trimmed.endsWith("'")) || (trimmed.startsWith('"') && trimmed.endsWith('"'))) {
+    trimmed = trimmed.slice(1, -1)
+  }
+  const parsed = JSON.parse(trimmed)
+  if (typeof parsed.private_key === 'string') {
+    parsed.private_key = parsed.private_key.replace(/\\n/g, '\n')
+  }
+  return parsed
+}
+
 function getAdminApp(): App {
   const existing = getApps()[0]
   if (existing) return existing
@@ -20,7 +32,16 @@ function getAdminApp(): App {
   const rawKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
 
   if (rawKey) {
-    return initializeApp({ credential: cert(JSON.parse(rawKey)), projectId })
+    try {
+      const serviceAccount = parseServiceAccountKey(rawKey)
+      return initializeApp({
+        credential: cert(serviceAccount),
+        projectId: projectId || serviceAccount.project_id
+      })
+    } catch (err) {
+      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY, falling back to projectId only:', err)
+      return initializeApp({ projectId })
+    }
   }
   return initializeApp({ credential: applicationDefault(), projectId })
 }

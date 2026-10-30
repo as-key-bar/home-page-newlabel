@@ -22,6 +22,38 @@ export function isAdminEmail(email: string | undefined | null, emailVerified: bo
 }
 
 /**
+ * Firebase Auth REST API (`accounts:lookup`) を使った ID トークン検証フォールバック。
+ * ローカルマシン時計のズレ (2026年など) で JWT の exp/iat 検証が失敗した場合や、
+ * Admin SDK の初期化情報が不足している環境でも Firebase 本番サーバーに直接検証を委譲する。
+ */
+async function verifyTokenViaIdentityToolkit(token: string): Promise<{ email?: string; email_verified?: boolean } | null> {
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+  if (!apiKey) return null
+
+  try {
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: token })
+      }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const user = data?.users?.[0]
+    if (!user) return null
+    return {
+      email: user.email,
+      email_verified: Boolean(user.emailVerified)
+    }
+  } catch (err) {
+    console.warn('IdentityToolkit token lookup fallback failed:', err)
+    return null
+  }
+}
+
+/**
  * 管理者として認証済みであれば null、そうでなければエラーレスポンスを返す。
  * 使い方: const denied = await requireAdmin(request); if (denied) return denied
  */
@@ -38,8 +70,21 @@ export async function requireAdmin(request: NextRequest): Promise<NextResponse |
     }
     return null
   } catch (error) {
+    console.warn('Admin SDK verifyIdToken failed, attempting IdentityToolkit fallback:', error)
+    const fallbackDecoded = await verifyTokenViaIdentityToolkit(token)
+    if (fallbackDecoded) {
+      if (!isAdminEmail(fallbackDecoded.email, fallbackDecoded.email_verified)) {
+        return NextResponse.json({ error: '権限がありません' }, { status: 403 })
+      }
+      return null
+    }
+
     console.error('ID token verification failed:', error)
-    return NextResponse.json({ error: '認証に失敗しました' }, { status: 401 })
+    const detail = error instanceof Error ? error.message : String(error)
+    return NextResponse.json(
+      { error: `認証に失敗しました (${detail})` },
+      { status: 401 }
+    )
   }
 }
 

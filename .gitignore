@@ -59,3 +59,8 @@ STORAGE_SERVICE_COMPARISON.md
 
 # Data files
 ../data/songs.csv
+
+# Figma design files
+figma/
+*.fig
+

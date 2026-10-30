@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSongs, Song } from '@/lib/firestore'
-import { addSong, updateSong, deleteSong } from '@/lib/firestore-admin'
+import { Song } from '@/lib/firestore'
+import { getSongsAdmin, addSong, updateSong, deleteSong } from '@/lib/firestore-admin'
 import { requireAdmin } from '@/lib/admin-auth'
 
 export type { Song }
@@ -9,7 +9,7 @@ export type { Song }
 // 全曲取得
 export async function GET() {
   try {
-    const songs = await getSongs()
+    const songs = await getSongsAdmin()
     return NextResponse.json({ songs })
   } catch (error) {
     console.error('Error getting songs:', error)

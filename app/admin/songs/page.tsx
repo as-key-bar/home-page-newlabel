@@ -11,9 +11,9 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 export default function SongsAdmin() {
   const { user, logout } = useAuth()
 
-  // 管理API用: Firebase IDトークンを Authorization ヘッダーに付与する
+  // 管理API用: Firebase IDトークンを Authorization ヘッダーに付与する（最新の有効なトークンを取得）
   const authFetch = async (url: string, init: RequestInit = {}) => {
-    const token = await user?.getIdToken()
+    const token = await user?.getIdToken(true)
     return fetch(url, {
       ...init,
       headers: {
@@ -50,10 +50,27 @@ export default function SongsAdmin() {
   const fetchSongs = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/songs')
-      if (!response.ok) throw new Error('楽曲の取得に失敗しました')
-      const data = await response.json()
-      setSongs(data.songs || [])
+      setError('')
+
+      // まず /api/songs からの取得を試みる
+      try {
+        const response = await fetch('/api/songs')
+        if (response.ok) {
+          const data = await response.json()
+          if (data && Array.isArray(data.songs) && data.songs.length > 0) {
+            setSongs(data.songs)
+            setLoading(false)
+            return
+          }
+        }
+      } catch (apiErr) {
+        console.warn('API fetch songs error, falling back to direct Firestore:', apiErr)
+      }
+
+      // API失敗または0件時はクライアントFirestore直接取得にフォールバック
+      const { getSongs } = await import('../../../lib/firestore')
+      const directSongs = await getSongs()
+      setSongs(directSongs)
     } catch (err) {
       setError(err instanceof Error ? err.message : '楽曲の取得に失敗しました')
     } finally {
@@ -95,19 +112,22 @@ export default function SongsAdmin() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
     clearMessages()
+
+    const payload = {
+      ...formData,
+      coverImagePath: formData.coverImagePath.trim(),
+      visible: formData.visible === 'true',
+      showInTop: formData.showInTop,
+      showInPortfolio: formData.showInPortfolio,
+      clientOrProject: formData.clientOrProject.trim(),
+      workDescription: formData.workDescription.trim()
+    }
     
     try {
       const response = await authFetch('/api/songs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          visible: formData.visible === 'true',
-          showInTop: formData.showInTop,
-          showInPortfolio: formData.showInPortfolio,
-          clientOrProject: formData.clientOrProject.trim(),
-          workDescription: formData.workDescription.trim()
-        })
+        body: JSON.stringify(payload)
       })
       
       if (!response.ok) {
@@ -119,7 +139,17 @@ export default function SongsAdmin() {
       resetForm()
       fetchSongs()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '楽曲の追加に失敗しました')
+      console.warn('API addSong failed, trying direct Firestore client SDK:', err)
+      try {
+        const { addSongClient } = await import('../../../lib/firestore')
+        await addSongClient(payload)
+        setSuccessMessage('楽曲が正常に追加されました')
+        resetForm()
+        fetchSongs()
+      } catch (clientErr) {
+        console.error('Direct Firestore addSongClient also failed:', clientErr)
+        setError(err instanceof Error ? err.message : '楽曲の追加に失敗しました')
+      }
     }
   }
 
@@ -169,6 +199,16 @@ export default function SongsAdmin() {
     if (!editingSong) return
     
     clearMessages()
+
+    const updates = {
+      ...formData,
+      coverImagePath: formData.coverImagePath.trim(),
+      visible: formData.visible === 'true',
+      showInTop: formData.showInTop,
+      showInPortfolio: formData.showInPortfolio,
+      clientOrProject: formData.clientOrProject.trim(),
+      workDescription: formData.workDescription.trim()
+    }
     
     try {
       const response = await authFetch('/api/songs', {
@@ -176,12 +216,7 @@ export default function SongsAdmin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           id: editingSong.id, 
-          ...formData,
-          visible: formData.visible === 'true',
-          showInTop: formData.showInTop,
-          showInPortfolio: formData.showInPortfolio,
-          clientOrProject: formData.clientOrProject.trim(),
-          workDescription: formData.workDescription.trim()
+          ...updates
         })
       })
       
@@ -194,7 +229,17 @@ export default function SongsAdmin() {
       resetForm()
       fetchSongs()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '楽曲の更新に失敗しました')
+      console.warn('API updateSong failed, trying direct Firestore client SDK:', err)
+      try {
+        const { updateSongClient } = await import('../../../lib/firestore')
+        await updateSongClient(editingSong.id, updates)
+        setSuccessMessage('楽曲が正常に更新されました')
+        resetForm()
+        fetchSongs()
+      } catch (clientErr) {
+        console.error('Direct Firestore updateSongClient also failed:', clientErr)
+        setError(err instanceof Error ? err.message : '楽曲の更新に失敗しました')
+      }
     }
   }
 
@@ -218,12 +263,6 @@ export default function SongsAdmin() {
       
       if (!response.ok) {
         const errorData = await response.json()
-        // エラー時は_deletingフラグを削除
-        setSongs(prevSongs => 
-          prevSongs.map(song => 
-            song.id === id ? { ...song, _deleting: false } : song
-          )
-        )
         throw new Error(errorData.error || '楽曲の削除に失敗しました')
       }
       
@@ -231,20 +270,34 @@ export default function SongsAdmin() {
       setSongs(prevSongs => prevSongs.filter(song => song.id !== id))
       setSuccessMessage('楽曲が正常に削除されました')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '楽曲の削除に失敗しました')
+      console.warn('API deleteSong failed, trying direct Firestore client SDK:', err)
+      try {
+        const { deleteSongClient } = await import('../../../lib/firestore')
+        await deleteSongClient(id)
+        setSongs(prevSongs => prevSongs.filter(song => song.id !== id))
+        setSuccessMessage('楽曲が正常に削除されました')
+      } catch (clientErr) {
+        console.error('Direct Firestore deleteSongClient also failed:', clientErr)
+        // エラー時は_deletingフラグを削除
+        setSongs(prevSongs => 
+          prevSongs.map(song => 
+            song.id === id ? { ...song, _deleting: false } : song
+          )
+        )
+        setError(err instanceof Error ? err.message : '楽曲の削除に失敗しました')
+      }
     }
   }
 
   // 表示・非表示の直接トグル
   const handleToggleVisibility = async (song: Song) => {
     clearMessages()
+    const updatedSong = {
+      ...song,
+      visible: !song.visible
+    }
     
     try {
-      const updatedSong = {
-        ...song,
-        visible: !song.visible
-      }
-      
       const response = await authFetch('/api/songs', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -259,19 +312,30 @@ export default function SongsAdmin() {
       setSuccessMessage(`「${song.title}」の表示状態を更新しました`)
       fetchSongs()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '表示状態の更新に失敗しました')
+      console.warn('API toggleVisibility failed, trying direct Firestore client SDK:', err)
+      try {
+        const { updateSongClient } = await import('../../../lib/firestore')
+        await updateSongClient(song.id, { visible: !song.visible })
+        setSuccessMessage(`「${song.title}」の表示状態を更新しました`)
+        fetchSongs()
+      } catch (clientErr) {
+        console.error('Direct Firestore toggleVisibility also failed:', clientErr)
+        setError(err instanceof Error ? err.message : '表示状態の更新に失敗しました')
+      }
     }
   }
 
   // 表示先（トップ / 実績）の直接トグル
   const handleToggleField = async (song: Song, field: 'showInTop' | 'showInPortfolio') => {
     clearMessages()
+    const currentValue = song[field] !== false
+    const updatedSong = {
+      ...song,
+      [field]: !currentValue
+    }
+    const label = field === 'showInTop' ? 'トップ表示' : '実績表示'
+
     try {
-      const currentValue = song[field] !== false
-      const updatedSong = {
-        ...song,
-        [field]: !currentValue
-      }
       const response = await authFetch('/api/songs', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -281,11 +345,19 @@ export default function SongsAdmin() {
         const errorData = await response.json()
         throw new Error(errorData.error || '表示先の更新に失敗しました')
       }
-      const label = field === 'showInTop' ? 'トップ表示' : '実績表示'
       setSuccessMessage(`「${song.title}」の${label}を切り替えました`)
       fetchSongs()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '表示先の更新に失敗しました')
+      console.warn('API toggleField failed, trying direct Firestore client SDK:', err)
+      try {
+        const { updateSongClient } = await import('../../../lib/firestore')
+        await updateSongClient(song.id, { [field]: !currentValue })
+        setSuccessMessage(`「${song.title}」の${label}を切り替えました`)
+        fetchSongs()
+      } catch (clientErr) {
+        console.error('Direct Firestore toggleField also failed:', clientErr)
+        setError(err instanceof Error ? err.message : '表示先の更新に失敗しました')
+      }
     }
   }
 
@@ -308,7 +380,16 @@ export default function SongsAdmin() {
       setSuccessMessage('表示順が正常に変更されました')
       fetchSongs()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '表示順の変更に失敗しました')
+      console.warn('API reorder failed, trying direct Firestore client SDK:', err)
+      try {
+        const { reorderSongByActionClient } = await import('../../../lib/firestore')
+        await reorderSongByActionClient(songId, action)
+        setSuccessMessage('表示順が正常に変更されました')
+        fetchSongs()
+      } catch (clientErr) {
+        console.error('Direct Firestore reorder also failed:', clientErr)
+        setError(err instanceof Error ? err.message : '表示順の変更に失敗しました')
+      }
     }
   }
 
@@ -577,17 +658,17 @@ export default function SongsAdmin() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium mb-1">カバー画像パス</label>
+                  <label className="block text-sm font-medium mb-1">カバー画像パス（任意・未入力でサムネイル無し）</label>
                   <div className="space-y-2">
                     <input
                       type="text"
                       name="coverImagePath"
                       value={formData.coverImagePath}
                       onChange={handleInputChange}
-                      placeholder="Firebase Storage URLまたは/images/covers/filename.jpg"
+                      placeholder="未設定（サムネイル無し）またはURL / パス"
                       className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
                     />
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <input
                         type="file"
                         accept="image/*"
@@ -606,7 +687,16 @@ export default function SongsAdmin() {
                       >
                         {uploadingImage ? 'アップロード中...' : '画像をアップロード'}
                       </label>
-                      <span className="text-xs text-gray-400">または直接パスを入力</span>
+                      {formData.coverImagePath && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, coverImagePath: '' }))}
+                          className="px-3 py-1 text-sm rounded bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors"
+                        >
+                          サムネイル無しにする
+                        </button>
+                      )}
+                      <span className="text-xs text-gray-400">※空欄で登録するとサムネイル無しで表示されます</span>
                     </div>
                     {formData.coverImagePath && (
                       <div className="mt-2">
@@ -754,8 +844,8 @@ export default function SongsAdmin() {
                   <div className="flex justify-between items-start">
                     <div className="flex gap-4 flex-1">
                       {/* サムネイル */}
-                      {song.coverImagePath && (
-                        <div className="flex-shrink-0">
+                      <div className="flex-shrink-0">
+                        {song.coverImagePath ? (
                           <img
                             src={song.coverImagePath}
                             alt={song.title}
@@ -765,8 +855,12 @@ export default function SongsAdmin() {
                               target.style.display = 'none'
                             }}
                           />
-                        </div>
-                      )}
+                        ) : (
+                          <div className="w-16 h-16 rounded border border-dashed border-gray-700 bg-gray-800/50 flex items-center justify-center text-[10px] text-gray-500 text-center leading-tight px-1">
+                            サムネイル<br />無し
+                          </div>
+                        )}
+                      </div>
                       
                       {/* 楽曲情報 */}
                       <div className="flex-1">

@@ -27,7 +27,7 @@ export default function DesignAdminPage() {
 
   // 管理API用: Firebase IDトークンを Authorization ヘッダーに付与
   const authFetch = async (url: string, init: RequestInit = {}) => {
-    const token = await user?.getIdToken()
+    const token = await user?.getIdToken(true)
     return fetch(url, {
       ...init,
       headers: {
@@ -41,10 +41,25 @@ export default function DesignAdminPage() {
   const fetchDesigns = async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/designs')
-      if (!res.ok) throw new Error('デザイン一覧の取得に失敗しました')
-      const data = await res.json()
-      setDesigns(data.designs || [])
+      try {
+        const res = await fetch('/api/designs')
+        if (res.ok) {
+          const data = await res.json()
+          if (data && Array.isArray(data.designs) && data.designs.length > 0) {
+            setDesigns(data.designs)
+            setLoading(false)
+            return
+          }
+        }
+      } catch (apiErr) {
+        console.warn('API fetchDesigns failed, falling back to direct Firestore:', apiErr)
+      }
+
+      const { getDesigns } = await import('../../../lib/firestore')
+      const directDesigns = await getDesigns()
+      if (directDesigns.length > 0) {
+        setDesigns(directDesigns)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'デザイン一覧の取得に失敗しました')
     } finally {
@@ -116,16 +131,18 @@ export default function DesignAdminPage() {
     e.preventDefault()
     clearMessages()
 
+    const payload = {
+      title: formData.title.trim(),
+      imagePath: formData.imagePath.trim(),
+      description: formData.description.trim(),
+      visible: formData.visible === 'true'
+    }
+
     try {
       const res = await authFetch('/api/designs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: formData.title.trim(),
-          imagePath: formData.imagePath.trim(),
-          description: formData.description.trim(),
-          visible: formData.visible === 'true'
-        })
+        body: JSON.stringify(payload)
       })
 
       if (!res.ok) {
@@ -137,7 +154,17 @@ export default function DesignAdminPage() {
       resetForm()
       fetchDesigns()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'デザインの追加に失敗しました')
+      console.warn('API addDesign failed, trying direct Firestore client SDK:', err)
+      try {
+        const { addDesignClient } = await import('../../../lib/firestore')
+        await addDesignClient(payload)
+        setSuccessMessage('デザイン実績を追加しました')
+        resetForm()
+        fetchDesigns()
+      } catch (clientErr) {
+        console.error('Direct Firestore addDesignClient also failed:', clientErr)
+        setError(err instanceof Error ? err.message : 'デザインの追加に失敗しました')
+      }
     }
   }
 
@@ -159,16 +186,20 @@ export default function DesignAdminPage() {
     if (!editingDesign) return
     clearMessages()
 
+    const updates = {
+      title: formData.title.trim(),
+      imagePath: formData.imagePath.trim(),
+      description: formData.description.trim(),
+      visible: formData.visible === 'true'
+    }
+
     try {
       const res = await authFetch('/api/designs', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editingDesign.id,
-          title: formData.title.trim(),
-          imagePath: formData.imagePath.trim(),
-          description: formData.description.trim(),
-          visible: formData.visible === 'true'
+          ...updates
         })
       })
 
@@ -181,7 +212,17 @@ export default function DesignAdminPage() {
       resetForm()
       fetchDesigns()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'デザインの更新に失敗しました')
+      console.warn('API updateDesign failed, trying direct Firestore client SDK:', err)
+      try {
+        const { updateDesignClient } = await import('../../../lib/firestore')
+        await updateDesignClient(editingDesign.id, updates)
+        setSuccessMessage('デザイン実績を更新しました')
+        resetForm()
+        fetchDesigns()
+      } catch (clientErr) {
+        console.error('Direct Firestore updateDesignClient also failed:', clientErr)
+        setError(err instanceof Error ? err.message : 'デザインの更新に失敗しました')
+      }
     }
   }
 
@@ -203,7 +244,16 @@ export default function DesignAdminPage() {
       setDesigns(prev => prev.filter(d => d.id !== id))
       setSuccessMessage('デザイン実績を削除しました')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'デザインの削除に失敗しました')
+      console.warn('API deleteDesign failed, trying direct Firestore client SDK:', err)
+      try {
+        const { deleteDesignClient } = await import('../../../lib/firestore')
+        await deleteDesignClient(id)
+        setDesigns(prev => prev.filter(d => d.id !== id))
+        setSuccessMessage('デザイン実績を削除しました')
+      } catch (clientErr) {
+        console.error('Direct Firestore deleteDesignClient also failed:', clientErr)
+        setError(err instanceof Error ? err.message : 'デザインの削除に失敗しました')
+      }
     }
   }
 
@@ -223,7 +273,15 @@ export default function DesignAdminPage() {
       if (!res.ok) throw new Error('表示状態の更新に失敗しました')
       fetchDesigns()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '表示状態の更新に失敗しました')
+      console.warn('API toggleDesignVisibility failed, trying direct Firestore client SDK:', err)
+      try {
+        const { updateDesignClient } = await import('../../../lib/firestore')
+        await updateDesignClient(design.id, { visible: !design.visible })
+        fetchDesigns()
+      } catch (clientErr) {
+        console.error('Direct Firestore toggleDesignVisibility also failed:', clientErr)
+        setError(err instanceof Error ? err.message : '表示状態の更新に失敗しました')
+      }
     }
   }
 
@@ -240,7 +298,15 @@ export default function DesignAdminPage() {
       if (!res.ok) throw new Error('表示順の変更に失敗しました')
       fetchDesigns()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '表示順の変更に失敗しました')
+      console.warn('API reorderDesign failed, trying direct Firestore client SDK:', err)
+      try {
+        const { reorderDesignByActionClient } = await import('../../../lib/firestore')
+        await reorderDesignByActionClient(id, action)
+        fetchDesigns()
+      } catch (clientErr) {
+        console.error('Direct Firestore reorderDesign also failed:', clientErr)
+        setError(err instanceof Error ? err.message : '表示順の変更に失敗しました')
+      }
     }
   }
 

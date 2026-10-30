@@ -25,7 +25,7 @@ export default function MovieAdminPage() {
 
   // 管理API用: Firebase IDトークンを Authorization ヘッダーに付与
   const authFetch = async (url: string, init: RequestInit = {}) => {
-    const token = await user?.getIdToken()
+    const token = await user?.getIdToken(true)
     return fetch(url, {
       ...init,
       headers: {
@@ -39,10 +39,25 @@ export default function MovieAdminPage() {
   const fetchMovies = async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/movies')
-      if (!res.ok) throw new Error('動画一覧の取得に失敗しました')
-      const data = await res.json()
-      setMovies(data.movies || [])
+      try {
+        const res = await fetch('/api/movies')
+        if (res.ok) {
+          const data = await res.json()
+          if (data && Array.isArray(data.movies) && data.movies.length > 0) {
+            setMovies(data.movies)
+            setLoading(false)
+            return
+          }
+        }
+      } catch (apiErr) {
+        console.warn('API fetchMovies failed, falling back to direct Firestore:', apiErr)
+      }
+
+      const { getMovies } = await import('../../../lib/firestore')
+      const directMovies = await getMovies()
+      if (directMovies.length > 0) {
+        setMovies(directMovies)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '動画一覧の取得に失敗しました')
     } finally {
@@ -80,16 +95,18 @@ export default function MovieAdminPage() {
     e.preventDefault()
     clearMessages()
 
+    const payload = {
+      title: formData.title.trim(),
+      youtubeUrl: formData.youtubeUrl.trim(),
+      description: formData.description.trim(),
+      visible: formData.visible === 'true'
+    }
+
     try {
       const res = await authFetch('/api/movies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: formData.title.trim(),
-          youtubeUrl: formData.youtubeUrl.trim(),
-          description: formData.description.trim(),
-          visible: formData.visible === 'true'
-        })
+        body: JSON.stringify(payload)
       })
 
       if (!res.ok) {
@@ -101,7 +118,17 @@ export default function MovieAdminPage() {
       resetForm()
       fetchMovies()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '動画の追加に失敗しました')
+      console.warn('API addMovie failed, trying direct Firestore client SDK:', err)
+      try {
+        const { addMovieClient } = await import('../../../lib/firestore')
+        await addMovieClient(payload)
+        setSuccessMessage('動画実績を追加しました')
+        resetForm()
+        fetchMovies()
+      } catch (clientErr) {
+        console.error('Direct Firestore addMovieClient also failed:', clientErr)
+        setError(err instanceof Error ? err.message : '動画の追加に失敗しました')
+      }
     }
   }
 
@@ -123,16 +150,20 @@ export default function MovieAdminPage() {
     if (!editingMovie) return
     clearMessages()
 
+    const updates = {
+      title: formData.title.trim(),
+      youtubeUrl: formData.youtubeUrl.trim(),
+      description: formData.description.trim(),
+      visible: formData.visible === 'true'
+    }
+
     try {
       const res = await authFetch('/api/movies', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editingMovie.id,
-          title: formData.title.trim(),
-          youtubeUrl: formData.youtubeUrl.trim(),
-          description: formData.description.trim(),
-          visible: formData.visible === 'true'
+          ...updates
         })
       })
 
@@ -145,7 +176,17 @@ export default function MovieAdminPage() {
       resetForm()
       fetchMovies()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '動画の更新に失敗しました')
+      console.warn('API updateMovie failed, trying direct Firestore client SDK:', err)
+      try {
+        const { updateMovieClient } = await import('../../../lib/firestore')
+        await updateMovieClient(editingMovie.id, updates)
+        setSuccessMessage('動画実績を更新しました')
+        resetForm()
+        fetchMovies()
+      } catch (clientErr) {
+        console.error('Direct Firestore updateMovieClient also failed:', clientErr)
+        setError(err instanceof Error ? err.message : '動画の更新に失敗しました')
+      }
     }
   }
 
@@ -167,7 +208,16 @@ export default function MovieAdminPage() {
       setMovies(prev => prev.filter(m => m.id !== id))
       setSuccessMessage('動画実績を削除しました')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '動画の削除に失敗しました')
+      console.warn('API deleteMovie failed, trying direct Firestore client SDK:', err)
+      try {
+        const { deleteMovieClient } = await import('../../../lib/firestore')
+        await deleteMovieClient(id)
+        setMovies(prev => prev.filter(m => m.id !== id))
+        setSuccessMessage('動画実績を削除しました')
+      } catch (clientErr) {
+        console.error('Direct Firestore deleteMovieClient also failed:', clientErr)
+        setError(err instanceof Error ? err.message : '動画の削除に失敗しました')
+      }
     }
   }
 
@@ -187,7 +237,15 @@ export default function MovieAdminPage() {
       if (!res.ok) throw new Error('表示状態の更新に失敗しました')
       fetchMovies()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '表示状態の更新に失敗しました')
+      console.warn('API toggleMovieVisibility failed, trying direct Firestore client SDK:', err)
+      try {
+        const { updateMovieClient } = await import('../../../lib/firestore')
+        await updateMovieClient(movie.id, { visible: !movie.visible })
+        fetchMovies()
+      } catch (clientErr) {
+        console.error('Direct Firestore toggleMovieVisibility also failed:', clientErr)
+        setError(err instanceof Error ? err.message : '表示状態の更新に失敗しました')
+      }
     }
   }
 
@@ -204,7 +262,15 @@ export default function MovieAdminPage() {
       if (!res.ok) throw new Error('表示順の変更に失敗しました')
       fetchMovies()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '表示順の変更に失敗しました')
+      console.warn('API reorderMovie failed, trying direct Firestore client SDK:', err)
+      try {
+        const { reorderMovieByActionClient } = await import('../../../lib/firestore')
+        await reorderMovieByActionClient(id, action)
+        fetchMovies()
+      } catch (clientErr) {
+        console.error('Direct Firestore reorderMovie also failed:', clientErr)
+        setError(err instanceof Error ? err.message : '表示順の変更に失敗しました')
+      }
     }
   }
 

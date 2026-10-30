@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSongs } from '@/lib/firestore'
-import { reorderSongs } from '@/lib/firestore-admin'
+import { getSongsAdmin, reorderSongs } from '@/lib/firestore-admin'
 import { requireAdmin } from '@/lib/admin-auth'
 
 
@@ -20,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 現在のデータを取得
-    const songs = await getSongs()
+    const songs = await getSongsAdmin()
     
     // 対象の楽曲のインデックスを見つける
     const targetIndex = songs.findIndex(s => s.id === id)
