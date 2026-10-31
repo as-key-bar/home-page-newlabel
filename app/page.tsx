@@ -21,37 +21,41 @@ export default function Home() {
   const [windowHeight, setWindowHeight] = useState(0)
   const [currentlyPlaying, setCurrentlyPlaying] = useState<number | null>(null)
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null)
-  const [backgroundSizes, setBackgroundSizes] = useState<Map<number, number>>(new Map())
+  const [zoomedOutSongs, setZoomedOutSongs] = useState<Set<number>>(new Set())
   const [playingDarkenedSongs, setPlayingDarkenedSongs] = useState<Set<number>>(new Set())
   const [showingSongInfo, setShowingSongInfo] = useState<number | null>(null)
   const [isAtBottom, setIsAtBottom] = useState(false)
   const [showInitialLoading, setShowInitialLoading] = useState(true)
   const [volume, setVolume] = useState(0.05) // 初期値5%
-  const [imagesLoaded, setImagesLoaded] = useState(false) // 画像読み込み完了状態
+  const [imagesLoaded, setImagesLoaded] = useState(false)
 
-  // 최신 backgroundSizes をアニメーション関数から参照するための ref
-  const backgroundSizesRef = useRef<Map<number, number>>(new Map())
-  useEffect(() => {
-    backgroundSizesRef.current = backgroundSizes
-  }, [backgroundSizes])
-
-  // 画像事前読み込み関数
+  // 画像事前読み込み関数（初期表示に必要な上位3枚＋ロゴのみをブロッキング対象にして初期表示も高速化）
   const preloadImages = useCallback(async (imagePaths: string[]): Promise<void> => {
-    const loadPromises = imagePaths.map((path) => {
-      return new Promise<void>((resolve, reject) => {
+    const priorityPaths = imagePaths.slice(0, 4)
+    const deferredPaths = imagePaths.slice(4)
+
+    const loadPromises = priorityPaths.map((path) => {
+      return new Promise<void>((resolve) => {
         const img = new Image()
         img.onload = () => resolve()
-        img.onerror = () => reject(new Error(`Failed to load image: ${path}`))
+        img.onerror = () => resolve()
         img.src = path
       })
     })
 
     try {
       await Promise.all(loadPromises)
+    } finally {
       setImagesLoaded(true)
-    } catch (err) {
-      console.error('Image preloading failed:', err)
-      setImagesLoaded(true)
+      // 残りの画像はアイドル時にバックグラウンドでプリロード
+      if (deferredPaths.length > 0) {
+        setTimeout(() => {
+          deferredPaths.forEach((path) => {
+            const img = new Image()
+            img.src = path
+          })
+        }, 300)
+      }
     }
   }, [])
 
@@ -74,13 +78,23 @@ export default function Home() {
           'firebase/firestore'
         )
 
-        // 楽曲データ取得（トップページ表示対象のみ）
+        // 楽曲データ取得（公開対象を取得し、/work ページ用のキャッシュにも保存）
         const songsCollection = collection(db, 'songs')
         const songsQuery = query(songsCollection, where('visible', '==', true), orderBy('order'))
         const songsSnapshot = await getDocs(songsQuery)
-        const songsData = songsSnapshot.docs
-          .map((d) => ({ id: d.id, ...d.data() }) as Song)
-          .filter((song) => song.showInTop !== false)
+        const allVisibleSongs = songsSnapshot.docs.map(
+          (d, index) =>
+            ({
+              ...d.data(),
+              id: d.id,
+              order: typeof d.data().order === 'number' ? d.data().order : index + 1
+            }) as Song
+        )
+        const { setCachedVisibleSongs, prefetchWorksData } = await import('../lib/firestore')
+        setCachedVisibleSongs(allVisibleSongs)
+        // /work ページの動画実績も同時にバックグラウンドで先読み開始
+        prefetchWorksData().catch(() => {})
+        const songsData = allVisibleSongs.filter((song) => song.showInTop !== false)
         setSongs(songsData)
 
         // プロフィールデータ取得
@@ -94,19 +108,18 @@ export default function Home() {
 
         // 画像事前読み込み
         const imagesToPreload: string[] = ['/images/newlabel_logo.png']
-        if (profileData?.profileImage) {
-          imagesToPreload.push(profileData.profileImage)
-        }
         songsData.forEach((song) => {
           if (song.coverImagePath) {
             imagesToPreload.push(song.coverImagePath)
           }
         })
+        if (profileData?.profileImage) {
+          imagesToPreload.push(profileData.profileImage)
+        }
 
         await preloadImages(imagesToPreload)
       } catch (err) {
         console.error('直接データ取得エラー:', err)
-        // フォールバック: API経由で取得
         Promise.all([
           fetch('/api/songs').then((res) => res.json()),
           fetch('/api/profile').then((res) => res.json())
@@ -126,15 +139,15 @@ export default function Home() {
             }
 
             const imagesToPreload: string[] = ['/images/newlabel_logo.png']
-            if (profileData?.profileImage) {
-              imagesToPreload.push(profileData.profileImage)
-            }
             if (Array.isArray(songsData?.songs)) {
               songsData.songs.forEach((song: Song) => {
                 if (song.coverImagePath) {
                   imagesToPreload.push(song.coverImagePath)
                 }
               })
+            }
+            if (profileData?.profileImage) {
+              imagesToPreload.push(profileData.profileImage)
             }
 
             preloadImages(imagesToPreload)
@@ -150,7 +163,7 @@ export default function Home() {
     loadData().finally(() => {
       const currentTime = Date.now()
       const elapsedTime = currentTime - loadingStartTime
-      const minimumDisplayTime = 1000 // 最低1秒表示
+      const minimumDisplayTime = 1000
       const remainingTime = Math.max(0, minimumDisplayTime - elapsedTime)
 
       if (!showInitialLoading) {
@@ -175,7 +188,10 @@ export default function Home() {
     })
   }, [showInitialLoading, imagesLoaded, loadingStartTime, preloadImages])
 
-  // パララックススクロールとウィンドウサイズのイベントリスナー（requestAnimationFrame + passive による軽量化）
+  // パララックススクロールとウィンドウサイズのイベントリスナー
+  // モバイルのアドレスバー伸縮によるガタつきを防ぐため、横幅が変わった時のみ高さを再計算
+  const lastWindowWidthRef = useRef(0)
+
   useEffect(() => {
     let ticking = false
 
@@ -198,9 +214,14 @@ export default function Home() {
     }
 
     const handleResize = () => {
-      setWindowHeight(window.innerHeight)
+      const currentWidth = window.innerWidth
+      if (Math.abs(currentWidth - lastWindowWidthRef.current) > 10) {
+        lastWindowWidthRef.current = currentWidth
+        setWindowHeight(window.innerHeight)
+      }
     }
 
+    lastWindowWidthRef.current = window.innerWidth
     setWindowHeight(window.innerHeight)
 
     window.addEventListener('scroll', handleScroll, { passive: true })
@@ -212,32 +233,18 @@ export default function Home() {
     }
   }, [])
 
-  // 滑らかな背景サイズアニメーション関数
-  const animateBackgroundSize = useCallback(
-    (songId: number, targetSize: number, duration: number = 1200) => {
-      const startTime = Date.now()
-      const currentSize = backgroundSizesRef.current.get(songId) || 135
-      const sizeDifference = targetSize - currentSize
-
-      const animate = () => {
-        const elapsed = Date.now() - startTime
-        const progress = Math.min(elapsed / duration, 1)
-
-        // easeOutCubic
-        const easedProgress = 1 - Math.pow(1 - progress, 3)
-        const currentAnimatedSize = currentSize + sizeDifference * easedProgress
-
-        setBackgroundSizes((prev) => new Map(prev).set(songId, currentAnimatedSize))
-
-        if (progress < 1) {
-          requestAnimationFrame(animate)
-        }
+  // GPU scale3d によるズーム状態切り替えヘルパー
+  const setSongZoomedOut = useCallback((songId: number, zoomedOut: boolean) => {
+    setZoomedOutSongs((prev) => {
+      const next = new Set(prev)
+      if (zoomedOut) {
+        next.add(songId)
+      } else {
+        next.delete(songId)
       }
-
-      requestAnimationFrame(animate)
-    },
-    []
-  )
+      return next
+    })
+  }, [])
 
   // スペースキーによる再生停止のキーボードイベントリスナー
   useEffect(() => {
@@ -248,7 +255,7 @@ export default function Home() {
         audioRef.pause()
         audioRef.currentTime = 0
 
-        animateBackgroundSize(currentlyPlaying, 135, 800)
+        setSongZoomedOut(currentlyPlaying, false)
         setPlayingDarkenedSongs((prev) => {
           const newSet = new Set(prev)
           newSet.delete(currentlyPlaying)
@@ -267,7 +274,7 @@ export default function Home() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [currentlyPlaying, audioRef, animateBackgroundSize])
+  }, [currentlyPlaying, audioRef, setSongZoomedOut])
 
   // 音量変更時に現在再生中の音楽の音量を更新
   useEffect(() => {
@@ -276,19 +283,11 @@ export default function Home() {
     }
   }, [volume, audioRef])
 
-  // レスポンシブ対応のスペーサー高さ計算関数
-  const getResponsiveSpacerHeight = () => {
-    if (windowHeight === 0) return windowHeight
-    return windowHeight
-  }
-
-  // バッファ高さ計算関数（ヘッダー後の空白スペース）
-  const getBufferHeight = () => {
-    return getResponsiveSpacerHeight()
-  }
+  const spacerHeight = windowHeight
+  const bufferHeight = windowHeight
 
   // カスタムスムーススクロール関数
-  const smoothScrollTo = (targetY: number) => {
+  const smoothScrollTo = useCallback((targetY: number) => {
     const startY = window.scrollY
     const distance = targetY - startY
     const duration = 400
@@ -312,154 +311,127 @@ export default function Home() {
     }
 
     requestAnimationFrame(animateScroll)
-  }
+  }, [])
 
-  // パララックスレイヤーの色合い計算関数（再生状態も考慮）
-  const calculateLayerFilter = (index: number, currentScrollY: number, song?: Song): string => {
-    const spacerHeight = getResponsiveSpacerHeight()
-    const bufferHeight = getBufferHeight()
+  // 各レイヤーの暗転度合い（0.0 = 明るい 〜 0.7 = 暗い）を軽量に算出
+  const calculateDarknessOpacity = (index: number, currentScrollY: number, songId: number): number => {
+    if (spacerHeight <= 0) return 0
     const layerStartPosition = bufferHeight + index * spacerHeight
-    const layerEndPosition = layerStartPosition + spacerHeight / 4
-
-    const isPlayingDarkened = song && playingDarkenedSongs.has(parseInt(song.id))
+    const isPlayingDarkened = playingDarkenedSongs.has(songId)
+    const playingExtraDarkness = isPlayingDarkened ? 0.35 : 0
 
     if (currentScrollY < layerStartPosition) {
-      const darknessFactor = Math.max(0, (layerStartPosition - currentScrollY) / spacerHeight / 2)
-      const brightness = Math.max(0.3, 1 - darknessFactor * 0.85)
-      const playingDarkness = isPlayingDarkened ? 0.7 : 1
-      return `brightness(${brightness * playingDarkness})`
+      const darknessFactor = Math.min(
+        0.5,
+        Math.max(0, (layerStartPosition - currentScrollY) / spacerHeight / 2)
+      )
+      const scrollDarkness = darknessFactor * 0.85
+      return Math.round(Math.min(0.75, scrollDarkness + playingExtraDarkness) * 50) / 50
     }
 
-    if (currentScrollY >= layerStartPosition && currentScrollY <= layerEndPosition) {
-      const playingDarkness = isPlayingDarkened ? 0.7 : 1
-      return `brightness(${playingDarkness})`
-    }
-
-    if (currentScrollY > layerEndPosition) {
-      const fadeDistance = currentScrollY - layerEndPosition
-      const maxFadeDistance = spacerHeight * 0.5
-      const whitenessProgress = Math.min(1, fadeDistance / maxFadeDistance)
-
-      const saturateValue = Math.max(0.4, 1 - whitenessProgress * 0.6)
-      const baseBrightness = isPlayingDarkened ? 0.84 : 1.2
-
-      return `brightness(${baseBrightness}) saturate(${saturateValue}) contrast(0.9) sepia(0.1) blur(0.3px)`
-    }
-
-    const playingDarkness = isPlayingDarkened ? 0.7 : 1
-    return `brightness(${playingDarkness})`
+    return playingExtraDarkness
   }
 
-  // 背景サイズ計算関数
-  const calculateBackgroundSize = (song: Song): string => {
-    const animatedSize = backgroundSizes.get(parseInt(song.id)) || 135
-    if (typeof window === 'undefined' || windowHeight === 0) return `${animatedSize}%`
+  // 音楽再生機能
+  const playAudio = useCallback(
+    (song: Song, index: number) => {
+      const songNumericId = parseInt(song.id)
 
-    const aspectRatio = window.innerWidth / windowHeight
-    if (aspectRatio < 1) {
-      return 'cover'
-    }
-    return `${animatedSize}%`
-  }
+      if (audioRef) {
+        audioRef.pause()
+        audioRef.currentTime = 0
+
+        if (currentlyPlaying) {
+          setSongZoomedOut(currentlyPlaying, false)
+          setPlayingDarkenedSongs((prev) => {
+            const newSet = new Set(prev)
+            newSet.delete(currentlyPlaying)
+            return newSet
+          })
+          setShowingSongInfo(null)
+        }
+
+        setTimeout(() => {
+          setCurrentlyPlaying(null)
+          setAudioRef(null)
+        }, 100)
+      }
+
+      // 同じ楽曲の場合は停止
+      if (currentlyPlaying === songNumericId) {
+        setSongZoomedOut(songNumericId, false)
+        setPlayingDarkenedSongs((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(songNumericId)
+          return newSet
+        })
+        setShowingSongInfo(null)
+
+        setTimeout(() => {
+          setCurrentlyPlaying(null)
+          setAudioRef(null)
+        }, 100)
+        return
+      }
+
+      // クリックしたレイヤーの位置まで自動スクロール
+      const targetScrollPosition = bufferHeight + index * spacerHeight
+      smoothScrollTo(targetScrollPosition)
+
+      // 縮小アニメーション開始 (scale 1.18 → 1.0)
+      setSongZoomedOut(songNumericId, true)
+
+      const audio = new Audio(song.audioPath)
+      audio.volume = volume
+
+      setTimeout(() => {
+        audio.play().catch((err) => {
+          console.error('音楽の再生に失敗しました:', err)
+          setSongZoomedOut(songNumericId, false)
+        })
+        setCurrentlyPlaying(songNumericId)
+        setAudioRef(audio)
+
+        setTimeout(() => {
+          setPlayingDarkenedSongs((prev) => {
+            const newSet = new Set(prev)
+            newSet.add(songNumericId)
+            return newSet
+          })
+        }, 1000)
+
+        setTimeout(() => {
+          setShowingSongInfo(songNumericId)
+        }, 1500)
+      }, 300)
+
+      audio.onended = () => {
+        setSongZoomedOut(songNumericId, false)
+        setPlayingDarkenedSongs((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(songNumericId)
+          return newSet
+        })
+        setShowingSongInfo(null)
+        setTimeout(() => {
+          setCurrentlyPlaying(null)
+          setAudioRef(null)
+        }, 100)
+      }
+    },
+    [audioRef, currentlyPlaying, bufferHeight, spacerHeight, smoothScrollTo, setSongZoomedOut, volume]
+  )
 
   // ヘッダースクロールと一番目の楽曲再生
-  const handleHeaderScrollClick = () => {
+  const handleHeaderScrollClick = useCallback(() => {
     if (songs.length === 0) return
 
-    const targetScrollPosition = getBufferHeight()
-    smoothScrollTo(targetScrollPosition)
+    smoothScrollTo(bufferHeight)
 
     setTimeout(() => {
       playAudio(songs[0], 0)
     }, 600)
-  }
-
-  // 音楽再生機能
-  const playAudio = (song: Song, index: number) => {
-    if (audioRef) {
-      audioRef.pause()
-      audioRef.currentTime = 0
-
-      if (currentlyPlaying) {
-        animateBackgroundSize(currentlyPlaying, 135, 800)
-        setPlayingDarkenedSongs((prev) => {
-          const newSet = new Set(prev)
-          newSet.delete(currentlyPlaying)
-          return newSet
-        })
-        setShowingSongInfo(null)
-      }
-
-      setTimeout(() => {
-        setCurrentlyPlaying(null)
-        setAudioRef(null)
-      }, 100)
-    }
-
-    // 同じ楽曲の場合は停止
-    if (currentlyPlaying === parseInt(song.id)) {
-      animateBackgroundSize(parseInt(song.id), 135, 800)
-      setPlayingDarkenedSongs((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(parseInt(song.id))
-        return newSet
-      })
-      setShowingSongInfo(null)
-
-      setTimeout(() => {
-        setCurrentlyPlaying(null)
-        setAudioRef(null)
-      }, 100)
-      return
-    }
-
-    // クリックしたレイヤーの位置まで自動スクロール
-    const spacerHeight = getResponsiveSpacerHeight()
-    const bufferHeight = getBufferHeight()
-    const targetScrollPosition = bufferHeight + index * spacerHeight
-    smoothScrollTo(targetScrollPosition)
-
-    // 縮小アニメーション開始 (135% → 100%)
-    animateBackgroundSize(parseInt(song.id), 100, 1200)
-
-    const audio = new Audio(song.audioPath)
-    audio.volume = volume
-
-    setTimeout(() => {
-      audio.play().catch((err) => {
-        console.error('音楽の再生に失敗しました:', err)
-        animateBackgroundSize(parseInt(song.id), 135, 400)
-      })
-      setCurrentlyPlaying(parseInt(song.id))
-      setAudioRef(audio)
-
-      setTimeout(() => {
-        setPlayingDarkenedSongs((prev) => {
-          const newSet = new Set(prev)
-          newSet.add(parseInt(song.id))
-          return newSet
-        })
-      }, 1000)
-
-      setTimeout(() => {
-        setShowingSongInfo(parseInt(song.id))
-      }, 1500)
-    }, 300)
-
-    audio.onended = () => {
-      animateBackgroundSize(parseInt(song.id), 135, 800)
-      setPlayingDarkenedSongs((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(parseInt(song.id))
-        return newSet
-      })
-      setShowingSongInfo(null)
-      setTimeout(() => {
-        setCurrentlyPlaying(null)
-        setAudioRef(null)
-      }, 100)
-    }
-  }
+  }, [songs, bufferHeight, smoothScrollTo, playAudio])
 
   if (error) {
     return (
@@ -471,8 +443,16 @@ export default function Home() {
     )
   }
 
-  const bufferHeight = getBufferHeight()
-  const spacerHeight = getResponsiveSpacerHeight()
+  // 現在画面内で最前面にある楽曲レイヤーのインデックスを特定（カリング用）
+  // scrollY < bufferHeight + (index + 1) * spacerHeight を満たす最小の index が現在見えている最前面レイヤー
+  const activeSongIndex =
+    spacerHeight > 0
+      ? Math.max(0, Math.floor((scrollY - bufferHeight) / spacerHeight))
+      : 0
+
+  // プロフィールセクションは最後の楽曲がスライドし始めた時（または楽曲0件時）のみ描画
+  const isProfileVisible =
+    songs.length === 0 || activeSongIndex >= songs.length - 1 || isAtBottom
 
   return (
     <>
@@ -488,6 +468,7 @@ export default function Home() {
         {/* ヘッダーパララックスレイヤー */}
         <HeroHeaderLayer
           scrollY={scrollY}
+          windowHeight={windowHeight}
           songsCount={songs.length}
           onScrollClick={handleHeaderScrollClick}
         />
@@ -497,21 +478,35 @@ export default function Home() {
           profile={profile}
           songsCount={songs.length}
           isAtBottom={isAtBottom}
+          isVisible={isProfileVisible}
         />
 
-        {/* パララックス背景レイヤー（各楽曲） */}
+        {/* パララックス背景レイヤー（各楽曲：画面に映る最大2枚のみ描画・GPU合成） */}
         {songs.map((song, index) => {
           const songNumericId = parseInt(song.id)
+          const rawOffset =
+            index === 0
+              ? Math.max(0, scrollY - bufferHeight)
+              : Math.max(0, scrollY - (bufferHeight + index * spacerHeight))
+
+          // カリング判定:
+          // 1. すでに画面下へ完全に抜けたレイヤー (rawOffset >= windowHeight) は非表示
+          // 2. 現在見えている最前面レイヤー (activeSongIndex) とその直後の1枚 (activeSongIndex + 1) 以外は完全に隠れているため非表示
+          const isVisible =
+            windowHeight === 0 ||
+            (rawOffset < windowHeight && index <= activeSongIndex + 1)
+
           return (
             <SongParallaxLayer
               key={`parallax-${songNumericId}-${index}`}
               song={song}
               index={index}
-              scrollY={scrollY}
-              bufferHeight={bufferHeight}
-              spacerHeight={spacerHeight}
-              backgroundSize={calculateBackgroundSize(song)}
-              layerFilter={calculateLayerFilter(index, scrollY, song)}
+              scrollOffset={isVisible ? rawOffset : 0}
+              darknessOpacity={
+                isVisible ? calculateDarknessOpacity(index, scrollY, songNumericId) : 0
+              }
+              isZoomedOut={zoomedOutSongs.has(songNumericId)}
+              isVisible={isVisible}
               isCurrentlyPlaying={currentlyPlaying === songNumericId}
               isShowingInfo={showingSongInfo === songNumericId}
               onPlay={playAudio}

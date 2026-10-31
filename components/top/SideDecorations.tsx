@@ -1,18 +1,17 @@
 'use client'
 
-import React from 'react'
+import React, { memo } from 'react'
 
 interface SideDecorationsProps {
   scrollY: number
 }
 
-const LEFT_DOTS = Array.from({ length: 50 })
-const RIGHT_DOTS = Array.from({ length: 50 })
-const LEFT_TRIANGLES = Array.from({ length: 10 })
-const RIGHT_TRIANGLES = Array.from({ length: 10 })
+// 画面高さ + ループ周期分のみの軽量な要素数に最適化（280px周期）
+const DOTS = Array.from({ length: 24 })
+const TRIANGLES = Array.from({ length: 6 })
 
-export default function SideDecorations({ scrollY }: SideDecorationsProps) {
-  const offsetTransform = `translate3d(0, ${(scrollY * -0.3) % 600}px, 0)`
+function SideDecorationsComponent({ scrollY }: SideDecorationsProps) {
+  const offsetTransform = `translate3d(0, ${(scrollY * -0.3) % 280}px, 0)`
 
   return (
     <>
@@ -21,11 +20,10 @@ export default function SideDecorations({ scrollY }: SideDecorationsProps) {
         <div
           className="flex flex-col items-center pt-8 will-change-transform"
           style={{
-            transform: offsetTransform,
-            height: 'calc(300vh + 600px)'
+            transform: offsetTransform
           }}
         >
-          {LEFT_DOTS.map((_, index) => (
+          {DOTS.map((_, index) => (
             <div
               key={`left-dot-${index}`}
               className="w-2 h-2 bg-white rounded-full opacity-60 mb-12"
@@ -38,11 +36,10 @@ export default function SideDecorations({ scrollY }: SideDecorationsProps) {
         <div
           className="flex flex-col items-center pt-8 will-change-transform"
           style={{
-            transform: offsetTransform,
-            height: 'calc(300vh + 600px)'
+            transform: offsetTransform
           }}
         >
-          {RIGHT_DOTS.map((_, index) => (
+          {DOTS.map((_, index) => (
             <div
               key={`right-dot-${index}`}
               className="w-2 h-2 bg-white rounded-full opacity-60 mb-12"
@@ -56,11 +53,10 @@ export default function SideDecorations({ scrollY }: SideDecorationsProps) {
         <div
           className="flex flex-col items-center pt-8 will-change-transform"
           style={{
-            transform: offsetTransform,
-            height: 'calc(300vh + 600px)'
+            transform: offsetTransform
           }}
         >
-          {LEFT_TRIANGLES.map((_, index) => (
+          {TRIANGLES.map((_, index) => (
             <div
               key={`left-triangle-${index}`}
               className="w-0 h-0 opacity-60"
@@ -79,11 +75,10 @@ export default function SideDecorations({ scrollY }: SideDecorationsProps) {
         <div
           className="flex flex-col items-center pt-8 will-change-transform"
           style={{
-            transform: offsetTransform,
-            height: 'calc(300vh + 600px)'
+            transform: offsetTransform
           }}
         >
-          {RIGHT_TRIANGLES.map((_, index) => (
+          {TRIANGLES.map((_, index) => (
             <div
               key={`right-triangle-${index}`}
               className="w-0 h-0 opacity-60"
@@ -101,3 +96,5 @@ export default function SideDecorations({ scrollY }: SideDecorationsProps) {
   )
 }
 
+const SideDecorations = memo(SideDecorationsComponent)
+export default SideDecorations

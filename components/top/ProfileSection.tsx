@@ -1,12 +1,13 @@
 'use client'
 
-import React from 'react'
+import React, { memo } from 'react'
 import { Profile } from '../../lib/firestore'
 
 interface ProfileSectionProps {
   profile: Profile | null
   songsCount: number
   isAtBottom: boolean
+  isVisible: boolean
 }
 
 function ProfileCard({
@@ -191,21 +192,24 @@ function ProfileCard({
   )
 }
 
-export default function ProfileSection({
+function ProfileSectionComponent({
   profile,
   songsCount,
-  isAtBottom
+  isAtBottom,
+  isVisible
 }: ProfileSectionProps) {
+  if (!isVisible && !isAtBottom) {
+    return null
+  }
+
   return (
     <>
-      {/* プロフィール背景レイヤー */}
+      {/* プロフィール背景レイヤー（重い backdrop-filter を廃止し軽量な半透明背景に変更） */}
       <div
-        className="fixed inset-0 w-full h-full"
+        className="fixed inset-0 w-full h-full pointer-events-none"
         style={{
           backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(2px)',
-          zIndex: -(songsCount + 2),
-          transition: 'all 0.3s ease-out'
+          zIndex: -(songsCount + 2)
         }}
       />
 
@@ -234,3 +238,5 @@ export default function ProfileSection({
   )
 }
 
+const ProfileSection = memo(ProfileSectionComponent)
+export default ProfileSection

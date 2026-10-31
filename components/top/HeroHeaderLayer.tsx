@@ -1,53 +1,59 @@
 'use client'
 
-import React from 'react'
+import React, { memo } from 'react'
 
 interface HeroHeaderLayerProps {
   scrollY: number
+  windowHeight: number
   songsCount: number
   onScrollClick: () => void
 }
 
-export default function HeroHeaderLayer({
+function HeroHeaderLayerComponent({
   scrollY,
+  windowHeight,
   songsCount,
   onScrollClick
 }: HeroHeaderLayerProps) {
-  const translateTransform = `translate3d(0, ${scrollY * -0.8}px, 0)`
+  // ヘッダーが完全に画面上へスクロールアウトしたら描画・合成をスキップ
+  const isOffscreen = windowHeight > 0 && scrollY * 0.8 > windowHeight * 1.1
+  const translateTransform = `translate3d(0, ${Math.round(scrollY * -0.8)}px, 0)`
 
   return (
     <>
       {/* ヘッダー背景画像レイヤー */}
       <div
-        className="fixed inset-0 w-full h-full will-change-transform"
+        className="fixed inset-0 w-full h-full"
         style={{
           backgroundImage: `url(/images/newlabel_logo.png)`,
           backgroundSize: '50%',
-          backgroundPosition: `center ${50 - scrollY * 0.1}%`,
+          backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',
           transform: translateTransform,
           zIndex: -(songsCount + 1),
-          filter: `brightness(0.9) saturate(0.8) blur(0.5px) drop-shadow(0 10px 25px rgba(0, 0, 0, 0.3))`,
-          transition: 'filter 0.3s ease-out, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+          visibility: isOffscreen ? 'hidden' : 'visible',
+          willChange: isOffscreen ? 'auto' : 'transform',
+          opacity: 0.9
         }}
       />
 
       {/* ヘッダークリック可能レイヤー */}
       <div
-        className="fixed top-0 left-0 w-full transition-all duration-300 will-change-transform"
+        className="fixed top-0 left-0 w-full"
         style={{
           height: '75vh',
           transform: translateTransform,
           zIndex: 100 + songsCount,
-          transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-          pointerEvents: scrollY > 100 ? 'none' : 'auto'
+          visibility: isOffscreen ? 'hidden' : 'visible',
+          willChange: isOffscreen ? 'auto' : 'transform',
+          pointerEvents: scrollY > 100 || isOffscreen ? 'none' : 'auto'
         }}
       >
         <header
-          className="relative shadow-sm backdrop-blur-sm h-full flex items-center"
+          className="relative shadow-sm h-full flex items-center"
           style={{
             background:
-              'linear-gradient(to bottom, rgba(255, 255, 255, 1) 70%, rgba(255, 255, 255, 0.8) 100%)'
+              'linear-gradient(to bottom, rgba(255, 255, 255, 1) 70%, rgba(255, 255, 255, 0.85) 100%)'
           }}
         >
           <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center w-full">
@@ -83,3 +89,5 @@ export default function HeroHeaderLayer({
   )
 }
 
+const HeroHeaderLayer = memo(HeroHeaderLayerComponent)
+export default HeroHeaderLayer
