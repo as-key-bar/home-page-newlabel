@@ -1,34 +1,42 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Song } from './api/songs/route'
 import { Profile } from '../lib/firestore'
 import LoadingScreen from '../components/LoadingScreen'
 import SlideMenu from '../components/SlideMenu'
+import SideDecorations from '../components/top/SideDecorations'
+import HeroHeaderLayer from '../components/top/HeroHeaderLayer'
+import ProfileSection from '../components/top/ProfileSection'
+import SongParallaxLayer from '../components/top/SongParallaxLayer'
 
 export default function Home() {
   const [songs, setSongs] = useState<Song[]>([])
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [isExiting, setIsExiting] = useState(false)
-  const [loadingStartTime, setLoadingStartTime] = useState(Date.now())
+  const [loadingStartTime] = useState(Date.now())
   const [error, setError] = useState<string | null>(null)
   const [scrollY, setScrollY] = useState(0)
   const [windowHeight, setWindowHeight] = useState(0)
-  const [windowWidth, setWindowWidth] = useState(0)
   const [currentlyPlaying, setCurrentlyPlaying] = useState<number | null>(null)
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null)
-  const [animatingTo, setAnimatingTo] = useState<number | null>(null)
   const [backgroundSizes, setBackgroundSizes] = useState<Map<number, number>>(new Map())
   const [playingDarkenedSongs, setPlayingDarkenedSongs] = useState<Set<number>>(new Set())
   const [showingSongInfo, setShowingSongInfo] = useState<number | null>(null)
   const [isAtBottom, setIsAtBottom] = useState(false)
   const [showInitialLoading, setShowInitialLoading] = useState(true)
-  const [volume, setVolume] = useState(0.05) // 初期値10%
+  const [volume, setVolume] = useState(0.05) // 初期値5%
   const [imagesLoaded, setImagesLoaded] = useState(false) // 画像読み込み完了状態
 
+  // 최신 backgroundSizes をアニメーション関数から参照するための ref
+  const backgroundSizesRef = useRef<Map<number, number>>(new Map())
+  useEffect(() => {
+    backgroundSizesRef.current = backgroundSizes
+  }, [backgroundSizes])
+
   // 画像事前読み込み関数
-  const preloadImages = async (imagePaths: string[]): Promise<void> => {
+  const preloadImages = useCallback(async (imagePaths: string[]): Promise<void> => {
     const loadPromises = imagePaths.map((path) => {
       return new Promise<void>((resolve, reject) => {
         const img = new Image()
@@ -41,16 +49,14 @@ export default function Home() {
     try {
       await Promise.all(loadPromises)
       setImagesLoaded(true)
-    } catch (error) {
-      console.error('Image preloading failed:', error)
-      // エラーがあっても進行させる
+    } catch (err) {
+      console.error('Image preloading failed:', err)
       setImagesLoaded(true)
     }
-  }
+  }, [])
 
   // サイト内遷移の検知
   useEffect(() => {
-    // セッションストレージでサイト内遷移を検知
     const hasVisited = sessionStorage.getItem('hasVisitedSite')
     if (hasVisited) {
       setShowInitialLoading(false)
@@ -59,24 +65,25 @@ export default function Home() {
     }
   }, [])
 
+  // データ取得とローディング制御
   useEffect(() => {
-    // 直接Firestoreからデータを取得
     const loadData = async () => {
       try {
         const { db } = await import('../lib/firebase')
-        const { collection, getDocs, query, orderBy, where } = await import('firebase/firestore')
-        
+        const { collection, getDocs, query, orderBy, where, doc, getDoc } = await import(
+          'firebase/firestore'
+        )
+
         // 楽曲データ取得（トップページ表示対象のみ）
         const songsCollection = collection(db, 'songs')
         const songsQuery = query(songsCollection, where('visible', '==', true), orderBy('order'))
         const songsSnapshot = await getDocs(songsQuery)
         const songsData = songsSnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }) as Song)
-          .filter(song => song.showInTop !== false)
+          .map((d) => ({ id: d.id, ...d.data() }) as Song)
+          .filter((song) => song.showInTop !== false)
         setSongs(songsData)
-        
+
         // プロフィールデータ取得
-        const { doc, getDoc } = await import('firebase/firestore')
         const profileRef = doc(db, 'settings', 'profile')
         const profileSnapshot = await getDoc(profileRef)
         let profileData: Profile | null = null
@@ -90,118 +97,115 @@ export default function Home() {
         if (profileData?.profileImage) {
           imagesToPreload.push(profileData.profileImage)
         }
-        songsData.forEach((song: any) => {
+        songsData.forEach((song) => {
           if (song.coverImagePath) {
             imagesToPreload.push(song.coverImagePath)
           }
         })
-        
+
         await preloadImages(imagesToPreload)
       } catch (err) {
         console.error('直接データ取得エラー:', err)
         // フォールバック: API経由で取得
         Promise.all([
-          fetch('/api/songs').then(res => res.json()),
-          fetch('/api/profile').then(res => res.json())
+          fetch('/api/songs').then((res) => res.json()),
+          fetch('/api/profile').then((res) => res.json())
         ])
-        .then(([songsData, profileData]) => {
-          if (songsData && songsData.songs && Array.isArray(songsData.songs)) {
-            const visibleSongs = songsData.songs.filter((song: Song) => song.visible === true)
-            setSongs(visibleSongs)
-          } else {
-            setError('楽曲データの読み込みに失敗しました')
-          }
-          
-          if (profileData && !profileData.error) {
-            setProfile(profileData)
-          }
+          .then(([songsData, profileData]) => {
+            if (songsData && Array.isArray(songsData.songs)) {
+              const visibleSongs = songsData.songs.filter(
+                (song: Song) => song.visible === true && song.showInTop !== false
+              )
+              setSongs(visibleSongs)
+            } else {
+              setError('楽曲データの読み込みに失敗しました')
+            }
 
-          // フォールバック時の画像事前読み込み
-          const imagesToPreload: string[] = ['/images/newlabel_logo.png']
-          if (profileData?.profileImage) {
-            imagesToPreload.push(profileData.profileImage)
-          }
-          if (songsData?.songs && Array.isArray(songsData.songs)) {
-            songsData.songs.forEach((song: any) => {
-              if (song.coverImagePath) {
-                imagesToPreload.push(song.coverImagePath)
-              }
-            })
-          }
-          
-          preloadImages(imagesToPreload)
-        })
-        .catch(err => {
-          setError('データの読み込みに失敗しました')
-          console.error(err)
-          // エラー時でもロゴだけは読み込む
-          preloadImages(['/images/newlabel_logo.png'])
-        })
+            if (profileData && !profileData.error) {
+              setProfile(profileData)
+            }
+
+            const imagesToPreload: string[] = ['/images/newlabel_logo.png']
+            if (profileData?.profileImage) {
+              imagesToPreload.push(profileData.profileImage)
+            }
+            if (Array.isArray(songsData?.songs)) {
+              songsData.songs.forEach((song: Song) => {
+                if (song.coverImagePath) {
+                  imagesToPreload.push(song.coverImagePath)
+                }
+              })
+            }
+
+            preloadImages(imagesToPreload)
+          })
+          .catch((fallbackErr) => {
+            setError('データの読み込みに失敗しました')
+            console.error(fallbackErr)
+            preloadImages(['/images/newlabel_logo.png'])
+          })
       }
     }
-    
-    loadData()
-      .finally(() => {
-        const currentTime = Date.now()
-        const elapsedTime = currentTime - loadingStartTime
-        const minimumDisplayTime = 1000 // 最低1秒表示
-        
-        const remainingTime = Math.max(0, minimumDisplayTime - elapsedTime)
-        
-        // サイト内遷移の場合はローディング画面をスキップ
-        if (!showInitialLoading) {
-          setLoading(false)
-          return
-        }
-        
-        // 画像読み込み完了を待ってから落下アニメーション開始
-        const waitForImages = () => {
-          if (imagesLoaded) {
-            setTimeout(() => {
-              // 落下アニメーション開始
-              setIsExiting(true)
-              // アニメーション完了後にローディング画面を非表示
-              setTimeout(() => {
-                setLoading(false)
-              }, 1200) // アニメーション完了後に余裕を持って非表示
-            }, remainingTime)
-          } else {
-            // 画像読み込み完了まで100ms間隔で確認
-            setTimeout(waitForImages, 100)
-          }
-        }
-        
-        waitForImages()
-      })
-  }, [showInitialLoading, imagesLoaded])
 
-  // パララックススクロールとウィンドウサイズのイベントリスナー
+    loadData().finally(() => {
+      const currentTime = Date.now()
+      const elapsedTime = currentTime - loadingStartTime
+      const minimumDisplayTime = 1000 // 最低1秒表示
+      const remainingTime = Math.max(0, minimumDisplayTime - elapsedTime)
+
+      if (!showInitialLoading) {
+        setLoading(false)
+        return
+      }
+
+      const waitForImages = () => {
+        if (imagesLoaded) {
+          setTimeout(() => {
+            setIsExiting(true)
+            setTimeout(() => {
+              setLoading(false)
+            }, 1200)
+          }, remainingTime)
+        } else {
+          setTimeout(waitForImages, 100)
+        }
+      }
+
+      waitForImages()
+    })
+  }, [showInitialLoading, imagesLoaded, loadingStartTime, preloadImages])
+
+  // パララックススクロールとウィンドウサイズのイベントリスナー（requestAnimationFrame + passive による軽量化）
   useEffect(() => {
+    let ticking = false
+
     const handleScroll = () => {
-      const currentScrollY = window.scrollY
-      setScrollY(currentScrollY)
-      
-      // 一番下までスクロールしたかチェック
-      const documentHeight = document.documentElement.scrollHeight
-      const windowHeight = window.innerHeight
-      const scrollBottom = currentScrollY + windowHeight
-      const threshold = 100 // 底から100px以内で判定
-      
-      setIsAtBottom(scrollBottom >= documentHeight - threshold)
+      if (ticking) return
+      ticking = true
+
+      requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY
+        setScrollY(currentScrollY)
+
+        const documentHeight = document.documentElement.scrollHeight
+        const winHeight = window.innerHeight
+        const scrollBottom = currentScrollY + winHeight
+        const threshold = 100
+
+        setIsAtBottom(scrollBottom >= documentHeight - threshold)
+        ticking = false
+      })
     }
 
     const handleResize = () => {
       setWindowHeight(window.innerHeight)
-      setWindowWidth(window.innerWidth)
     }
 
-    // 初期化
     setWindowHeight(window.innerHeight)
-    setWindowWidth(window.innerWidth)
 
-    window.addEventListener('scroll', handleScroll)
-    window.addEventListener('resize', handleResize)
-    
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('resize', handleResize, { passive: true })
+
     return () => {
       window.removeEventListener('scroll', handleScroll)
       window.removeEventListener('resize', handleResize)
@@ -209,52 +213,49 @@ export default function Home() {
   }, [])
 
   // 滑らかな背景サイズアニメーション関数
-  const animateBackgroundSize = (songId: number, targetSize: number, duration: number = 1200) => {
-    const startTime = Date.now()
-    const currentSize = backgroundSizes.get(songId) || 135
-    const sizeDifference = targetSize - currentSize
-    
-    const animate = () => {
-      const elapsed = Date.now() - startTime
-      const progress = Math.min(elapsed / duration, 1)
-      
-      // easeOutCubic - スクロールアニメーションと同じカーブ
-      const easedProgress = 1 - Math.pow(1 - progress, 3)
-      const currentAnimatedSize = currentSize + (sizeDifference * easedProgress)
-      
-      setBackgroundSizes(prev => new Map(prev).set(songId, currentAnimatedSize))
-      
-      if (progress < 1) {
-        requestAnimationFrame(animate)
+  const animateBackgroundSize = useCallback(
+    (songId: number, targetSize: number, duration: number = 1200) => {
+      const startTime = Date.now()
+      const currentSize = backgroundSizesRef.current.get(songId) || 135
+      const sizeDifference = targetSize - currentSize
+
+      const animate = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / duration, 1)
+
+        // easeOutCubic
+        const easedProgress = 1 - Math.pow(1 - progress, 3)
+        const currentAnimatedSize = currentSize + sizeDifference * easedProgress
+
+        setBackgroundSizes((prev) => new Map(prev).set(songId, currentAnimatedSize))
+
+        if (progress < 1) {
+          requestAnimationFrame(animate)
+        }
       }
-    }
-    
-    requestAnimationFrame(animate)
-  }
+
+      requestAnimationFrame(animate)
+    },
+    []
+  )
 
   // スペースキーによる再生停止のキーボードイベントリスナー
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // スペースキーが押されて、再生中の楽曲がある場合のみ停止
       if (event.code === 'Space' && currentlyPlaying && audioRef) {
-        event.preventDefault() // ページスクロールを防止
-        
-        // 音楽停止
+        event.preventDefault()
+
         audioRef.pause()
         audioRef.currentTime = 0
-        
-        // 拡大アニメーションと明るさ復帰
+
         animateBackgroundSize(currentlyPlaying, 135, 800)
-        // 暗くなった状態から明るさを復帰
-        setPlayingDarkenedSongs(prev => {
+        setPlayingDarkenedSongs((prev) => {
           const newSet = new Set(prev)
           newSet.delete(currentlyPlaying)
           return newSet
         })
-        // 楽曲情報表示を隠す
         setShowingSongInfo(null)
-        
-        // 状態リセット
+
         setTimeout(() => {
           setCurrentlyPlaying(null)
           setAudioRef(null)
@@ -263,11 +264,10 @@ export default function Home() {
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [currentlyPlaying, audioRef, backgroundSizes])
+  }, [currentlyPlaying, audioRef, animateBackgroundSize])
 
   // 音量変更時に現在再生中の音楽の音量を更新
   useEffect(() => {
@@ -279,48 +279,33 @@ export default function Home() {
   // レスポンシブ対応のスペーサー高さ計算関数
   const getResponsiveSpacerHeight = () => {
     if (windowHeight === 0) return windowHeight
-    const windowWidth = window.innerWidth
-    // モバイル: 100vh, タブレット: 100vh, デスクトップ: 100vh
-    if (windowWidth <= 768) return windowHeight * 1  // モバイル
-    if (windowWidth <= 1024) return windowHeight * 1 // タブレット（80vh→70vhに短縮）
-    return windowHeight  // デスクトップ
+    return windowHeight
   }
 
   // バッファ高さ計算関数（ヘッダー後の空白スペース）
   const getBufferHeight = () => {
-    return getResponsiveSpacerHeight() * 1  // スペーサーの100%の高さをバッファとして使用
+    return getResponsiveSpacerHeight()
   }
 
-  // プロフィールセクションの開始位置計算関数
-  const getProfileStartPosition = () => {
-    const spacerHeight = getResponsiveSpacerHeight()
-    const bufferHeight = getBufferHeight()
-    const totalSpacers = songs.length // オフセットスペーサーも含む
-    return bufferHeight + totalSpacers * spacerHeight
-  }
-
-  // カスタムスムーススクロール関数（ゆっくりとした引っ張られるようなアニメーション）
+  // カスタムスムーススクロール関数
   const smoothScrollTo = (targetY: number) => {
     const startY = window.scrollY
     const distance = targetY - startY
-    const duration = 400 // 0.4秒間のアニメーション
+    const duration = 400
     let startTime: number | null = null
 
-    // easeOutCubic - ゆっくりと減速する動き
-    const easeOutCubic = (t: number): number => {
-      return 1 - Math.pow(1 - t, 3)
-    }
+    const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3)
 
     const animateScroll = (currentTime: number) => {
       if (startTime === null) startTime = currentTime
       const timeElapsed = currentTime - startTime
       const progress = Math.min(timeElapsed / duration, 1)
-      
+
       const easedProgress = easeOutCubic(progress)
-      const currentY = startY + (distance * easedProgress)
-      
+      const currentY = startY + distance * easedProgress
+
       window.scrollTo(0, currentY)
-      
+
       if (progress < 1) {
         requestAnimationFrame(animateScroll)
       }
@@ -330,100 +315,81 @@ export default function Home() {
   }
 
   // パララックスレイヤーの色合い計算関数（再生状態も考慮）
-  const calculateLayerFilter = (index: number, scrollY: number, windowHeight: number, song?: Song): string => {
+  const calculateLayerFilter = (index: number, currentScrollY: number, song?: Song): string => {
     const spacerHeight = getResponsiveSpacerHeight()
     const bufferHeight = getBufferHeight()
-    const layerStartPosition = bufferHeight + (index * spacerHeight)
-    const layerEndPosition = layerStartPosition + spacerHeight/4
-    
-    // 再生中で0.5秒後に暗くなった楽曲かどうかチェック
+    const layerStartPosition = bufferHeight + index * spacerHeight
+    const layerEndPosition = layerStartPosition + spacerHeight / 4
+
     const isPlayingDarkened = song && playingDarkenedSongs.has(parseInt(song.id))
-    
-    // スクロール開始前（暗くする）
-    if (scrollY < layerStartPosition) {
-      const darknessFactor = Math.max(0, (layerStartPosition - scrollY) / spacerHeight/2)
-      const brightness = Math.max(0.3, 1 - darknessFactor * 0.85) // 最低15%の明度
-      // 再生中の場合はさらに暗く
+
+    if (currentScrollY < layerStartPosition) {
+      const darknessFactor = Math.max(0, (layerStartPosition - currentScrollY) / spacerHeight / 2)
+      const brightness = Math.max(0.3, 1 - darknessFactor * 0.85)
       const playingDarkness = isPlayingDarkened ? 0.7 : 1
       return `brightness(${brightness * playingDarkness})`
     }
-    
-    // スクロール開始中（通常の色合いまたは再生中の暗さ）
-    if (scrollY >= layerStartPosition && scrollY <= layerEndPosition) {
+
+    if (currentScrollY >= layerStartPosition && currentScrollY <= layerEndPosition) {
       const playingDarkness = isPlayingDarkened ? 0.7 : 1
       return `brightness(${playingDarkness})`
     }
-    
-    // ブラウザ外に半分消えてから白っぽくする（半透明な白いレイヤー効果）
-    if (scrollY > layerEndPosition) {
-      const fadeDistance = scrollY - layerEndPosition
+
+    if (currentScrollY > layerEndPosition) {
+      const fadeDistance = currentScrollY - layerEndPosition
       const maxFadeDistance = spacerHeight * 0.5
       const whitenessProgress = Math.min(1, fadeDistance / maxFadeDistance)
-      
-      // 白いレイヤーのオーバーレイ効果をCSSフィルターで再現
-      const whiteLayerOpacity = whitenessProgress * 1 // 最大60%の白いレイヤー
-      const saturateValue = Math.max(0.4, 1 - whitenessProgress * 0.6) // 彩度を下げる
-      // 再生中の場合はベースの明度を下げる
-      const baseBrightness = isPlayingDarkened ? 0.84 : 1.2 // 1.2 * 0.7 = 0.84
-      
-      return `brightness(${baseBrightness}) saturate(${saturateValue}) contrast(0.9) sepia(0.1) blur(0.3px))`
+
+      const saturateValue = Math.max(0.4, 1 - whitenessProgress * 0.6)
+      const baseBrightness = isPlayingDarkened ? 0.84 : 1.2
+
+      return `brightness(${baseBrightness}) saturate(${saturateValue}) contrast(0.9) sepia(0.1) blur(0.3px)`
     }
 
     const playingDarkness = isPlayingDarkened ? 0.7 : 1
     return `brightness(${playingDarkness})`
   }
 
-  // 背景サイズ計算関数（アニメーション状態を反映、レスポンシブ対応）
+  // 背景サイズ計算関数
   const calculateBackgroundSize = (song: Song): string => {
     const animatedSize = backgroundSizes.get(parseInt(song.id)) || 135
-    
-    // 画面のアスペクト比を取得
-    const windowWidth = window.innerWidth
-    const aspectRatio = windowWidth / windowHeight
-    
-    // 縦長画面（アスペクト比が1未満）の場合、coverスタイルで上下を埋める
+    if (typeof window === 'undefined' || windowHeight === 0) return `${animatedSize}%`
+
+    const aspectRatio = window.innerWidth / windowHeight
     if (aspectRatio < 1) {
       return 'cover'
     }
-    
-    // 横長画面では従来通りのサイズ指定
     return `${animatedSize}%`
   }
 
   // ヘッダースクロールと一番目の楽曲再生
   const handleHeaderScrollClick = () => {
     if (songs.length === 0) return
-    
-    // ヘッダーが見切れる位置までスクロール（バッファ高さまで）
+
     const targetScrollPosition = getBufferHeight()
     smoothScrollTo(targetScrollPosition)
-    
-    // 少し遅らせて一番目の楽曲を自動再生
+
     setTimeout(() => {
       playAudio(songs[0], 0)
-    }, 600) // スクロールアニメーション（400ms）完了後に実行
+    }, 600)
   }
 
-  // 音楽再生機能（滑らかな背景アニメーション対応）
+  // 音楽再生機能
   const playAudio = (song: Song, index: number) => {
-    // 既存の音楽を停止（縮小アニメーション開始）
     if (audioRef) {
       audioRef.pause()
       audioRef.currentTime = 0
-      
-      // 既存楽曲の拡大アニメーションと明るさ復帰 (135%に戻す)
+
       if (currentlyPlaying) {
-        animateBackgroundSize(currentlyPlaying, 135, 800) // 少し早めの拡大
-        // 暗くなった状態から明るさを復帰
-        setPlayingDarkenedSongs(prev => {
+        animateBackgroundSize(currentlyPlaying, 135, 800)
+        setPlayingDarkenedSongs((prev) => {
           const newSet = new Set(prev)
           newSet.delete(currentlyPlaying)
           return newSet
         })
-        // 楽曲情報表示を隠す
         setShowingSongInfo(null)
       }
-      
+
       setTimeout(() => {
         setCurrentlyPlaying(null)
         setAudioRef(null)
@@ -432,17 +398,14 @@ export default function Home() {
 
     // 同じ楽曲の場合は停止
     if (currentlyPlaying === parseInt(song.id)) {
-      // 拡大アニメーションと明るさ復帰 (135%に戻す)
       animateBackgroundSize(parseInt(song.id), 135, 800)
-      // 暗くなった状態から明るさを復帰
-      setPlayingDarkenedSongs(prev => {
+      setPlayingDarkenedSongs((prev) => {
         const newSet = new Set(prev)
         newSet.delete(parseInt(song.id))
         return newSet
       })
-      // 楽曲情報表示を隠す
       setShowingSongInfo(null)
-      
+
       setTimeout(() => {
         setCurrentlyPlaying(null)
         setAudioRef(null)
@@ -453,52 +416,43 @@ export default function Home() {
     // クリックしたレイヤーの位置まで自動スクロール
     const spacerHeight = getResponsiveSpacerHeight()
     const bufferHeight = getBufferHeight()
-    const targetScrollPosition = bufferHeight + (index) * spacerHeight
+    const targetScrollPosition = bufferHeight + index * spacerHeight
     smoothScrollTo(targetScrollPosition)
 
-    // 縮小アニメーション開始 (135% → 100%への滑らかな縮小)
+    // 縮小アニメーション開始 (135% → 100%)
     animateBackgroundSize(parseInt(song.id), 100, 1200)
 
-    // 音楽再生準備
     const audio = new Audio(song.audioPath)
-    // 音量を設定
     audio.volume = volume
-    
-    // アニメーション開始と同時に音楽再生
+
     setTimeout(() => {
-      audio.play().catch(error => {
-        console.error('音楽の再生に失敗しました:', error)
-        // エラー時は拡大
+      audio.play().catch((err) => {
+        console.error('音楽の再生に失敗しました:', err)
         animateBackgroundSize(parseInt(song.id), 135, 400)
       })
       setCurrentlyPlaying(parseInt(song.id))
       setAudioRef(audio)
-      
-      // 1秒後に画像を暗くする
+
       setTimeout(() => {
-        setPlayingDarkenedSongs(prev => {
+        setPlayingDarkenedSongs((prev) => {
           const newSet = new Set(prev)
           newSet.add(parseInt(song.id))
           return newSet
         })
       }, 1000)
-      
-      // 1.5秒後に楽曲情報を表示する
+
       setTimeout(() => {
         setShowingSongInfo(parseInt(song.id))
-      }, 1500) 
-    }, 300) // 拡大アニメーション開始後少し遅らせて音楽再生
-    
+      }, 1500)
+    }, 300)
+
     audio.onended = () => {
-      // 楽曲終了時の拡大アニメーションと明るさ復帰
       animateBackgroundSize(parseInt(song.id), 135, 800)
-      // 暗くなった状態から明るさを復帰
-      setPlayingDarkenedSongs(prev => {
+      setPlayingDarkenedSongs((prev) => {
         const newSet = new Set(prev)
         newSet.delete(parseInt(song.id))
         return newSet
       })
-      // 楽曲情報表示を隠す
       setShowingSongInfo(null)
       setTimeout(() => {
         setCurrentlyPlaying(null)
@@ -517,612 +471,77 @@ export default function Home() {
     )
   }
 
+  const bufferHeight = getBufferHeight()
+  const spacerHeight = getResponsiveSpacerHeight()
+
   return (
     <>
-      {/* ローディング画面 - 固定位置で重ねて表示 */}
       {loading && <LoadingScreen isExiting={isExiting} />}
-      
-      {/* メインコンテンツ */}
-    <div className="relative select-none">
-      {/* 画面両端のドット列 */}
-      <div className="fixed left-0 top-0 w-4 h-screen z-50 overflow-hidden">
-        <div
-          className="flex flex-col items-center pt-8"
-          style={{
-            transform: `translateY(${(scrollY * -0.3) % 600}px)`,
-            height: 'calc(300vh + 600px)'
-          }}
-        >
-          {Array.from({ length: 50 }).map((_, index) => (
-            <div
-              key={`left-dot-${index}`}
-              className="w-2 h-2 bg-white rounded-full opacity-60 mb-12"
-            />
-          ))}
-        </div>
-      </div>
-      
-      <div className="fixed right-0 top-0 w-4 h-screen z-50 overflow-hidden">
-        <div
-          className="flex flex-col items-center pt-8"
-          style={{
-            transform: `translateY(${(scrollY * -0.3) % 600}px)`,
-            height: 'calc(300vh + 600px)'
-          }}
-        >
-          {Array.from({ length: 50 }).map((_, index) => (
-            <div
-              key={`right-dot-${index}`}
-              className="w-2 h-2 bg-white rounded-full opacity-60 mb-12"
-            />
-          ))}
-        </div>
-      </div>
 
-      {/* 画面両端の三角形列（ドット列の内側） */}
-      <div className="fixed left-6 top-0 w-4 h-screen z-50 overflow-hidden">
-        <div
-          className="flex flex-col items-center pt-8"
-          style={{
-            transform: `translateY(${(scrollY * -0.3) % 600}px)`,
-            height: 'calc(300vh + 600px)'
-          }}
-        >
-          {Array.from({ length: 10 }).map((_, index) => (
-            <div
-              key={`left-triangle-${index}`}
-              className="w-0 h-0 opacity-60"
-              style={{
-                borderTop: '4px solid transparent',
-                borderBottom: '4px solid transparent',
-                borderLeft: '6px solid white',
-                marginBottom: '272px'
-              }}
-            />
-          ))}
-        </div>
-      </div>
-      
-      <div className="fixed right-6 top-0 w-4 h-screen z-50 overflow-hidden">
-        <div
-          className="flex flex-col items-center pt-8"
-          style={{
-            transform: `translateY(${(scrollY * -0.3) % 600}px)`,
-            height: 'calc(300vh + 600px)'
-          }}
-        >
-          {Array.from({ length: 10 }).map((_, index) => (
-            <div
-              key={`right-triangle-${index}`}
-              className="w-0 h-0 opacity-60"
-              style={{
-                borderTop: '4px solid transparent',
-                borderBottom: '4px solid transparent',
-                borderRight: '6px solid white',
-                marginBottom: '272px'
-              }}
-            />
-          ))}
-        </div>
-      </div>
+      <div className="relative select-none">
+        {/* 画面両端のドット列・三角形列 */}
+        <SideDecorations scrollY={scrollY} />
 
-      {/* スライドメニュー */}
-      <SlideMenu volume={volume} onVolumeChange={setVolume} isLoading={loading} />
+        {/* スライドメニュー */}
+        <SlideMenu volume={volume} onVolumeChange={setVolume} isLoading={loading} />
 
-      {/* ヘッダーパララックスレイヤー - ロゴ背景 */}
-      <React.Fragment key="header-parallax">
-        {/* ヘッダー背景画像レイヤー */}
-        <div 
-          key="header-background"
-          className="fixed inset-0 w-full h-full"
-          style={{
-            backgroundImage: `url(/images/newlabel_logo.png)`,
-            backgroundSize: '50%',
-            backgroundPosition: `center ${50 - (scrollY * 0.1)}%`,
-            backgroundRepeat: 'no-repeat',
-            transform: `translateY(${scrollY * -0.8}px)`,
-            zIndex: -(songs.length + 1),
-            filter: `brightness(0.9) saturate(0.8) blur(0.5px) drop-shadow(0 10px 25px rgba(0, 0, 0, 0.3))`,
-            transition: 'filter 0.3s ease-out, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-          }}
+        {/* ヘッダーパララックスレイヤー */}
+        <HeroHeaderLayer
+          scrollY={scrollY}
+          songsCount={songs.length}
+          onScrollClick={handleHeaderScrollClick}
         />
-        
-        {/* ヘッダークリック可能レイヤー */}
-        <div
-          key="header-clickable"
-          className="fixed top-0 left-0 w-full transition-all duration-300"
-          style={{
-            height: '75vh',
-            transform: `translateY(${scrollY * -0.8}px)`,
-            zIndex: 100 + songs.length,
-            transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-            pointerEvents: scrollY > 100 ? 'none' : 'auto'
-          }}
-        >
-          {/* ヘッダーコンテンツ */}
-          <header className="relative shadow-sm backdrop-blur-sm h-full flex items-center" style={{
-            background: 'linear-gradient(to bottom, rgba(255, 255, 255, 1) 70%, rgba(255, 255, 255, 0.8) 100%)'
-          }}>
-            <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center w-full">
-              <div className="flex-1 flex flex-col items-center">
-                <div className="h-32 w-auto overflow-hidden flex items-center justify-center">
-                  <img 
-                    src="/images/newlabel_logo.png" 
-                    alt="NewLabel Logo" 
-                    className="h-64 w-auto object-cover"
-                    style={{
-                      objectPosition: '50% 50%',
-                      clipPath: 'inset(30% 0 40% 0)'
-                    }}
-                  />
-                </div>
-                <p className="text-gray-600 dark:text-gray-400 mt-1 text-center">
-                  SCROLL AND PLAY DEMO
-                </p>
-              </div>
-            </div>
-            
-            {/* スクロール促進アイコン */}
-            <div 
-              className="absolute bottom-0 left-1/2 transform -translate-x-1/2 cursor-pointer hover:opacity-70 transition-opacity px-36 pb-6 pt-[100px]"
-              onClick={handleHeaderScrollClick}
-              title="最初の楽曲まで移動"
-            >
-              <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-gray-500 opacity-100 animate-bounce"></div>
-            </div>
-          </header>
-        </div>
-      </React.Fragment>
 
-      {/* プロフィールパララックスレイヤー */}
-      <React.Fragment key="profile-parallax">
-        {/* プロフィール背景レイヤー */}
-        <div 
-          key="profile-background"
-          className="fixed inset-0 w-full h-full"
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(2px)',
-            zIndex: -(songs.length + 2),
-            transition: 'all 0.3s ease-out'
-          }}
+        {/* プロフィールパララックス＆最下部インタラクティブレイヤー */}
+        <ProfileSection
+          profile={profile}
+          songsCount={songs.length}
+          isAtBottom={isAtBottom}
         />
-        
-        {/* プロフィールコンテンツレイヤー */}
-        <div
-          key="profile-content"
-          className="fixed inset-0 w-full h-full flex flex-col items-center justify-center"
-          style={{
-            zIndex: -(songs.length + 1),
-            pointerEvents: 'auto'
-          }}
-        >
-          {profile && (
-            <>
-              <section className="bg-white/90 rounded-lg shadow-md p-3 w-full max-w-3xl mx-auto select-text cursor-auto">
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 text-center">
-                Profile
-              </h2>
-            
-            <div className="flex flex-col md:flex-row gap-4 items-start">
-              {/* プロフィール画像 */}
-              <div className="flex-shrink-0 mx-auto md:mx-0">
-                {profile.profileImage ? (
-                  <img
-                    src={profile.profileImage}
-                    alt={profile.name}
-                    className="w-20 h-20 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-20 h-20 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-                    <span className="text-gray-500 dark:text-gray-400 text-sm">画像</span>
-                  </div>
-                )}
-              </div>
-              
-              {/* プロフィール情報 */}
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                  {profile.name}
-                </h3>
-                
-                <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 leading-relaxed">
-                  {profile.bio}
-                </p>
-                
-                <div className="mb-2">
-                  <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                    得意ジャンル
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {profile.genres.map((genre, index) => (
-                      <span
-                        key={index}
-                        className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded-full text-xs"
-                      >
-                        {genre}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                
-                {profile.equipment && (
-                  <div className="mb-2">
-                    <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                      使用機材・ソフト
-                    </h4>
-                    <p className="text-gray-600 dark:text-gray-400 text-xs">
-                      {profile.equipment}
-                    </p>
-                  </div>
-                )}
-                
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                    連絡先
-                  </h4>
-                  <div className="flex gap-4 flex-wrap">
-                    {profile.contact.email && (
-                      <a href={`mailto:${profile.contact.email}`} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm">
-                        Email
-                      </a>
-                    )}
-                    {profile.contact.twitter && (
-                      <a href={profile.contact.twitter} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                         target="_blank" rel="noopener noreferrer">
-                        X/Twitter
-                      </a>
-                    )}
-                    {profile.contact.soundcloud && (
-                      <a href={profile.contact.soundcloud} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                         target="_blank" rel="noopener noreferrer">
-                        SoundCloud
-                      </a>
-                    )}
-                    {profile.contact.bandcamp && (
-                      <a href={profile.contact.bandcamp} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                         target="_blank" rel="noopener noreferrer">
-                        Bandcamp
-                      </a>
-                    )}
-                    {profile.contact.youtube && (
-                      <a href={profile.contact.youtube} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                         target="_blank" rel="noopener noreferrer">
-                        YouTube
-                      </a>
-                    )}
-                    {profile.contact.instagram && (
-                      <a href={profile.contact.instagram} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                         target="_blank" rel="noopener noreferrer">
-                        Instagram
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* ナビゲーションセクション（表示のみ） */}
-              <div className="flex flex-col gap-3 justify-center items-center">
-                <div className="bg-transparent text-black px-4 py-2 rounded-lg font-medium text-center min-w-[140px] text-sm">
-                  楽曲利用規約はこちら
-                </div>
-                <div className="bg-transparent text-black px-4 py-2 rounded-lg font-medium text-center min-w-[140px] text-sm">
-                  お問い合わせはこちら
-                </div>
-                <div className="bg-black/80 text-white px-5 py-2.5 rounded-lg font-semibold text-center min-w-[160px] text-sm">
-                  制作実績・できること・料金表はこちら
-                </div>
-              </div>
-            </section>
-            </>
-          )}
-        </div>
-      </React.Fragment>
 
-      {/* 最下部スクロール時クリックレイヤー */}
-      <div
-        className="fixed inset-0 w-full h-full flex flex-col items-center justify-center"
-        style={{
-          zIndex: 300,
-          pointerEvents: isAtBottom ? 'auto' : 'none'
-        }}
-      >
-        {isAtBottom && profile && (
-            <section className="bg-transparent p-3 w-full max-w-3xl mx-auto pointer-events-auto">
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 text-center">
-                Profile
-              </h2>
-            
-            <div className="flex flex-col md:flex-row gap-4 items-start">
-              {/* プロフィール画像 */}
-              <div className="flex-shrink-0 mx-auto md:mx-0">
-                {profile.profileImage ? (
-                  <img
-                    src={profile.profileImage}
-                    alt={profile.name}
-                    className="w-20 h-20 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-20 h-20 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-                    <span className="text-gray-500 dark:text-gray-400 text-sm">画像</span>
-                  </div>
-                )}
-              </div>
-              
-              {/* プロフィール情報 */}
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                  {profile.name}
-                </h3>
-                
-                <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 leading-relaxed">
-                  {profile.bio}
-                </p>
-                
-                <div className="mb-2">
-                  <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                    得意ジャンル
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {profile.genres.map((genre, index) => (
-                      <span
-                        key={index}
-                        className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded-full text-xs"
-                      >
-                        {genre}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                
-                {profile.equipment && (
-                  <div className="mb-2">
-                    <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                      使用機材・ソフト
-                    </h4>
-                    <p className="text-gray-600 dark:text-gray-400 text-xs">
-                      {profile.equipment}
-                    </p>
-                  </div>
-                )}
-                
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1">
-                    連絡先
-                  </h4>
-                  <div className="flex gap-4 flex-wrap">
-                    {profile.contact.email && (
-                      <a href={`mailto:${profile.contact.email}`} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm">
-                        Email
-                      </a>
-                    )}
-                    {profile.contact.twitter && (
-                      <a href={profile.contact.twitter} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                         target="_blank" rel="noopener noreferrer">
-                        X/Twitter
-                      </a>
-                    )}
-                    {profile.contact.soundcloud && (
-                      <a href={profile.contact.soundcloud} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                         target="_blank" rel="noopener noreferrer">
-                        SoundCloud
-                      </a>
-                    )}
-                    {profile.contact.bandcamp && (
-                      <a href={profile.contact.bandcamp} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                         target="_blank" rel="noopener noreferrer">
-                        Bandcamp
-                      </a>
-                    )}
-                    {profile.contact.youtube && (
-                      <a href={profile.contact.youtube} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                         target="_blank" rel="noopener noreferrer">
-                        YouTube
-                      </a>
-                    )}
-                    {profile.contact.instagram && (
-                      <a href={profile.contact.instagram} 
-                         className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                         target="_blank" rel="noopener noreferrer">
-                        Instagram
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col gap-3 justify-center items-center">
-              <a
-                href="/license"
-                className="bg-transparent text-black px-4 py-2 rounded-lg font-medium text-center min-w-[140px] text-sm cursor-pointer"
-                style={{ position: 'relative', zIndex: 3010 }}
-              >
-                楽曲利用規約はこちら
-              </a>
-              <a
-                href="/contact"
-                className="bg-transparent text-black px-4 py-2 rounded-lg font-medium text-center min-w-[140px] text-sm cursor-pointer"
-                style={{ position: 'relative', zIndex: 3010 }}
-              >
-                お問い合わせはこちら
-              </a>
-              <a
-                href="/work"
-                className="bg-black/90 hover:bg-black text-white px-5 py-2.5 rounded-lg font-semibold text-center min-w-[160px] text-sm cursor-pointer shadow-md transition-all hover:scale-105"
-                style={{ position: 'relative', zIndex: 3010 }}
-              >
-                制作実績・できること・料金表はこちら
-              </a>
-            </div>
-          </section>
-        )}
-      </div>
-
-      {/* パララックス背景レイヤー - songs.csvから動的生成 */}
-      {songs.map((song, index) => (
-        <React.Fragment key={`parallax-${parseInt(song.id)}-${index}`}>
-          {/* パララックスレイヤーコンテナ */}
-          <div 
-            key={`container-${parseInt(song.id)}-${index}`}
-            className="fixed inset-0 w-full h-full"
-            style={{
-              transform: index === 0 
-                ? `translateY(${Math.max(0, scrollY - getBufferHeight()) * 1}px)` 
-                : `translateY(${Math.max(0, (scrollY - (getBufferHeight() + index * getResponsiveSpacerHeight())) * 1)}px)`,
-              zIndex: -(index + 1),
-              transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-            }}
-          >
-            {/* 背景画像レイヤー（フィルター適用対象） */}
-            <div 
-              className="absolute inset-0 w-full h-full"
-              style={{
-                backgroundImage: `url(${song.coverImagePath})`,
-                backgroundSize: calculateBackgroundSize(song),
-                backgroundPosition: index === 0 
-                  ? `center ${50 + (Math.max(0, scrollY - getBufferHeight()) * 0.08)}%`
-                  : `center ${50 + (Math.max(0, scrollY - (getBufferHeight() + index * getResponsiveSpacerHeight())) * 0.05)}%`,
-                backgroundRepeat: 'no-repeat',
-                filter: `${calculateLayerFilter(index, scrollY, windowHeight, song)} drop-shadow(0 10px 25px rgba(0, 0, 0, 1)) drop-shadow(0 4px 8px rgba(0, 0, 0, 1))`,
-                transition: 'filter 0.3s ease-out'
-              }}
+        {/* パララックス背景レイヤー（各楽曲） */}
+        {songs.map((song, index) => {
+          const songNumericId = parseInt(song.id)
+          return (
+            <SongParallaxLayer
+              key={`parallax-${songNumericId}-${index}`}
+              song={song}
+              index={index}
+              scrollY={scrollY}
+              bufferHeight={bufferHeight}
+              spacerHeight={spacerHeight}
+              backgroundSize={calculateBackgroundSize(song)}
+              layerFilter={calculateLayerFilter(index, scrollY, song)}
+              isCurrentlyPlaying={currentlyPlaying === songNumericId}
+              isShowingInfo={showingSongInfo === songNumericId}
+              onPlay={playAudio}
             />
+          )
+        })}
 
-            {/* 再生ボタン（フィルター影響外・半透明黒円の直感的なデザイン） */}
-            <div 
-              className={`absolute inset-0 flex items-center justify-center transition-all duration-700 ease-in-out pointer-events-none ${
-                currentlyPlaying !== parseInt(song.id) ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
-              }`}
-            >
-              <div className="flex flex-col items-center justify-center space-y-2">
-                {/* 円形ボタンスタイル */}
-                <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-black/60 backdrop-blur-md border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex items-center justify-center transition-all duration-300">
-                  {/* 三角形アイコン（光学的に中央に見えるよう右にわずかにシフト） */}
-                  <svg 
-                    className="w-8 h-8 md:w-12 md:h-12 text-white fill-white translate-x-0.5 drop-shadow-md" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                </div>
-                {/* 補助ラベル */}
-                <span className="text-white text-xs md:text-sm font-semibold tracking-widest drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase select-none">
-                  PLAY
-                </span>
-              </div>
-            </div>
-
-            {/* 未再生時のdescriptionテキスト（フレーバーテキスト） */}
-            <div 
-              className={`absolute right-0 top-3/5 transform -translate-y-3/5 text-white bg-transparent text-right transition-all duration-1000 ease-out ${
-                currentlyPlaying !== parseInt(song.id) && showingSongInfo !== parseInt(song.id)
-                  ? 'opacity-100 transform -translate-y-3/5 translate-x-0' 
-                  : 'opacity-0 transform -translate-y-3/5 translate-x-5'
-              }`}
-            >
-              {song.description && (
-                <div className="pl-4 pr-4 py-2" style={{ background: 'linear-gradient(to left, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0))' }}>
-                  <p className="text-sm sm:text-lg md:text-1xl lg:text-2xl xl:text-3xl drop-shadow whitespace-pre-line leading-relaxed" style={{ opacity: 1, fontFamily: 'vdl-v7gothic, sans-serif', fontWeight: 300 }}>
-                    {song.description.replace(/\/n/g, '\n')}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* 再生中の楽曲情報表示（フィルター影響外） */}
-            <div 
-              className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-white bg-transparent text-right pr-2 transition-all duration-1000 ease-out ${
-                showingSongInfo === parseInt(song.id) 
-                  ? 'opacity-100 transform -translate-y-1/2 translate-x-0' 
-                  : 'opacity-0 transform -translate-y-1/2 translate-x-5'
-              }`}
-            >
-              <div className="overflow-hidden mb-2 md:mb-4">
-                <h3 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-bold drop-shadow-lg leading-tight break-words overflow-hidden" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', hyphens: 'auto' }}>
-                  {song.title.replace(/\/n/g, '\n')}
-                </h3>
-              </div>
-              <p className="text-lg sm:text-2xl md:text-3xl lg:text-5xl xl:text-7xl font-medium mb-2 md:mb-4 drop-shadow-md break-words leading-tight whitespace-pre-line" style={{ opacity: 0.9 }}>
-                {song.genre.replace(/\/n/g, '\n')}
-              </p>
-              <p className="text-sm sm:text-lg md:text-xl lg:text-2xl xl:text-4xl font-normal drop-shadow-md break-words leading-tight" style={{ opacity: 0.8 }}>
-                {song.releaseDate}
-              </p>
-              {song.originalTracks && (
-                <p className="text-xs sm:text-sm md:text-lg lg:text-xl xl:text-3xl font-semibold drop-shadow-md break-words leading-tight whitespace-pre-line" style={{ opacity: 0.8 }}>
-                  {song.originalTracks.replace(/\/n/g, '\n')}
-                </p>
-              )}
-            </div>
-          </div>
-          
-          {/* クリック可能な透明レイヤー */}
-          <div
-            key={`clickable-${parseInt(song.id)}`}
-            className="fixed inset-0 w-full h-full cursor-pointer transition-all duration-300"
-            style={{
-              transform: index === 0 
-                ? `translateY(${Math.max(0, scrollY - getBufferHeight()) * 1}px)` 
-                : `translateY(${Math.max(0, (scrollY - (getBufferHeight() + index * getResponsiveSpacerHeight())) * 1)}px)`,
-              zIndex: 100 - index,
-              transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-              // backgroundColor: `hsl(${index * 360 / songs.length}, 70%, 50%, 0.3)`,
-              // border: `4px solid hsl(${index * 360 / songs.length}, 70%, 40%)`
-            }}
-            onClick={(e) => {
-              console.log('パララックス背景がクリックされました:', song.title)
-              e.preventDefault()
-              playAudio(song, index)
-            }}
-            title={`${song.title} - クリックで再生`}
-          >
-          </div>
-        </React.Fragment>
-      ))}
-
-      {/* メインコンテンツ */}
-      <main className="relative z-10 pointer-events-none select-none">
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          {songs.length === 0 ? (
+        {/* メインコンテンツ（スクロールスペーサー） */}
+        <main className="relative z-10 pointer-events-none select-none">
+          <div className="max-w-4xl mx-auto px-4 py-8">
             <div className="text-center py-12">
               <p className="text-gray-600 dark:text-gray-400">
-                楽曲データがありません
+                {songs.length === 0
+                  ? '楽曲データがありません'
+                  : `${songs.length} 楽曲が見つかりました`}
               </p>
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-600 dark:text-gray-400">
-                {songs.length} 楽曲が見つかりました
-              </p>
-            </div>
-          )}
-          
-          {/* バッファスペーサー - ヘッダー後の空白スペース */}
-          <div key="buffer-spacer" className="h-[90vh] md:h-[90vh] lg:h-[100vh]"></div>
-          
-          {/* スクロール用のスペーサー - パララックスレイヤー数に合わせて動的生成（モバイル対応） */}
-          {songs.slice(0, -1).map((_, index) => (
-            <div key={`spacer-${index}`} className="h-[70vh] md:h-[75vh] lg:h-[100vh]"></div>
-          ))}
-          <div key={`spacer-offset-1`} className="h-[100vh] md:h-[100vh] lg:h-[100vh]"></div>
-          <div key={`spacer-offset-2`} className="h-[250vh] md:h-[150vh] lg:h-[100vh]"></div>
-          
 
-        </div>
-      </main>
-    </div>
+            {/* バッファスペーサー */}
+            <div className="h-[90vh] md:h-[90vh] lg:h-[100vh]" />
+
+            {/* 楽曲ごとのスペーサー */}
+            {songs.slice(0, -1).map((_, index) => (
+              <div key={`spacer-${index}`} className="h-[70vh] md:h-[75vh] lg:h-[100vh]" />
+            ))}
+            <div className="h-[100vh] md:h-[100vh] lg:h-[100vh]" />
+            <div className="h-[250vh] md:h-[150vh] lg:h-[100vh]" />
+          </div>
+        </main>
+      </div>
     </>
   )
 }
