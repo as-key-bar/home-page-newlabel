@@ -90,7 +90,7 @@ function SongParallaxLayerComponent({
           </div>
         </div>
 
-        {/* 未再生時のdescriptionテキスト（フレーバーテキスト） */}
+        {/* 未再生時のdescriptionテキスト（フレーバーテキスト：スマホ時は右側サムネイルバーと重ならないよう余白を確保） */}
         <div
           className={`absolute right-0 top-3/5 transform -translate-y-3/5 text-white bg-transparent text-right transition-all duration-700 ease-out pointer-events-none ${
             !isCurrentlyPlaying && !isShowingInfo
@@ -100,7 +100,7 @@ function SongParallaxLayerComponent({
         >
           {song.description && (
             <div
-              className="pl-4 pr-4 py-2"
+              className="pl-4 pr-16 md:pr-4 py-2"
               style={{
                 background: 'linear-gradient(to left, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0))'
               }}
@@ -115,9 +115,9 @@ function SongParallaxLayerComponent({
           )}
         </div>
 
-        {/* 再生中の楽曲情報表示 */}
+        {/* 再生中の楽曲情報表示（スマホ時は右側サムネイルバーと重ならないよう right-16 に配置） */}
         <div
-          className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-white bg-transparent text-right pr-2 transition-all duration-700 ease-out pointer-events-none ${
+          className={`absolute right-16 md:right-4 top-1/2 transform -translate-y-1/2 text-white bg-transparent text-right pr-2 transition-all duration-700 ease-out pointer-events-none ${
             isShowingInfo ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-5'
           }`}
         >

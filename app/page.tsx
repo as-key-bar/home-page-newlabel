@@ -9,6 +9,7 @@ import SideDecorations from '../components/top/SideDecorations'
 import HeroHeaderLayer from '../components/top/HeroHeaderLayer'
 import ProfileSection from '../components/top/ProfileSection'
 import SongParallaxLayer from '../components/top/SongParallaxLayer'
+import MobileSongSwitcher from '../components/top/MobileSongSwitcher'
 
 export default function Home() {
   const [songs, setSongs] = useState<Song[]>([])
@@ -28,6 +29,12 @@ export default function Home() {
   const [showInitialLoading, setShowInitialLoading] = useState(true)
   const [volume, setVolume] = useState(0.05) // 初期値5%
   const [imagesLoaded, setImagesLoaded] = useState(false)
+  const playTimeoutsRef = useRef<number[]>([])
+
+  const clearPlayTimeouts = useCallback(() => {
+    playTimeoutsRef.current.forEach((id) => window.clearTimeout(id))
+    playTimeoutsRef.current = []
+  }, [])
 
   // 画像事前読み込み関数（初期表示に必要な上位3枚＋ロゴのみをブロッキング対象にして初期表示も高速化）
   const preloadImages = useCallback(async (imagePaths: string[]): Promise<void> => {
@@ -336,6 +343,7 @@ export default function Home() {
   const playAudio = useCallback(
     (song: Song, index: number) => {
       const songNumericId = parseInt(song.id)
+      clearPlayTimeouts()
 
       if (audioRef) {
         audioRef.pause()
@@ -350,11 +358,6 @@ export default function Home() {
           })
           setShowingSongInfo(null)
         }
-
-        setTimeout(() => {
-          setCurrentlyPlaying(null)
-          setAudioRef(null)
-        }, 100)
       }
 
       // 同じ楽曲の場合は停止
@@ -366,11 +369,8 @@ export default function Home() {
           return newSet
         })
         setShowingSongInfo(null)
-
-        setTimeout(() => {
-          setCurrentlyPlaying(null)
-          setAudioRef(null)
-        }, 100)
+        setCurrentlyPlaying(null)
+        setAudioRef(null)
         return
       }
 
@@ -383,16 +383,17 @@ export default function Home() {
 
       const audio = new Audio(song.audioPath)
       audio.volume = volume
+      setCurrentlyPlaying(songNumericId)
+      setAudioRef(audio)
 
-      setTimeout(() => {
+      const t1 = window.setTimeout(() => {
         audio.play().catch((err) => {
           console.error('音楽の再生に失敗しました:', err)
           setSongZoomedOut(songNumericId, false)
+          setCurrentlyPlaying(null)
         })
-        setCurrentlyPlaying(songNumericId)
-        setAudioRef(audio)
 
-        setTimeout(() => {
+        const t2 = window.setTimeout(() => {
           setPlayingDarkenedSongs((prev) => {
             const newSet = new Set(prev)
             newSet.add(songNumericId)
@@ -400,12 +401,17 @@ export default function Home() {
           })
         }, 1000)
 
-        setTimeout(() => {
+        const t3 = window.setTimeout(() => {
           setShowingSongInfo(songNumericId)
         }, 1500)
+
+        playTimeoutsRef.current.push(t2, t3)
       }, 300)
 
+      playTimeoutsRef.current.push(t1)
+
       audio.onended = () => {
+        clearPlayTimeouts()
         setSongZoomedOut(songNumericId, false)
         setPlayingDarkenedSongs((prev) => {
           const newSet = new Set(prev)
@@ -413,13 +419,20 @@ export default function Home() {
           return newSet
         })
         setShowingSongInfo(null)
-        setTimeout(() => {
-          setCurrentlyPlaying(null)
-          setAudioRef(null)
-        }, 100)
+        setCurrentlyPlaying(null)
+        setAudioRef(null)
       }
     },
-    [audioRef, currentlyPlaying, bufferHeight, spacerHeight, smoothScrollTo, setSongZoomedOut, volume]
+    [
+      audioRef,
+      currentlyPlaying,
+      bufferHeight,
+      spacerHeight,
+      smoothScrollTo,
+      setSongZoomedOut,
+      clearPlayTimeouts,
+      volume
+    ]
   )
 
   // ヘッダースクロールと一番目の楽曲再生
@@ -464,6 +477,18 @@ export default function Home() {
 
         {/* スライドメニュー */}
         <SlideMenu volume={volume} onVolumeChange={setVolume} isLoading={loading} />
+
+        {/* スマホ向け：画面右側の丸型サムネイル楽曲切り替えバー */}
+        {!loading && (
+          <MobileSongSwitcher
+            songs={songs}
+            activeSongIndex={activeSongIndex}
+            currentlyPlaying={currentlyPlaying}
+            isHeaderActive={scrollY < bufferHeight * 0.5}
+            isAtBottom={isAtBottom}
+            onSelectSong={playAudio}
+          />
+        )}
 
         {/* ヘッダーパララックスレイヤー */}
         <HeroHeaderLayer
