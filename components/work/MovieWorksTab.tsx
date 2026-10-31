@@ -14,8 +14,19 @@ export default function MovieWorksTab({ movies, loading }: MovieWorksTabProps) {
 
   if (loading) {
     return (
-      <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">
-        動画データを読み込み中...
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6" aria-busy="true">
+        {[1, 2].map((i) => (
+          <div
+            key={i}
+            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40 overflow-hidden animate-pulse"
+          >
+            <div className="aspect-video w-full bg-gray-200 dark:bg-gray-700" />
+            <div className="p-4 space-y-2">
+              <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded" />
+              <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded" />
+            </div>
+          </div>
+        ))}
       </div>
     )
   }
@@ -43,6 +54,7 @@ export default function MovieWorksTab({ movies, loading }: MovieWorksTabProps) {
                 <iframe
                   src={embedUrl}
                   title={movie.title}
+                  loading="lazy"
                   className="w-full h-full border-0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen

@@ -41,8 +41,20 @@ export default function MusicWorksTab({
 }: MusicWorksTabProps) {
   if (loading) {
     return (
-      <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">
-        楽曲データを読み込み中...
+      <div className="space-y-4" aria-busy="true" aria-label="楽曲データを読み込み中">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 animate-pulse flex items-center gap-4"
+          >
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-md bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+              <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 rounded" />
+              <div className="h-3 w-full max-w-md bg-gray-200 dark:bg-gray-700 rounded" />
+            </div>
+          </div>
+        ))}
       </div>
     )
   }
@@ -77,6 +89,8 @@ export default function MusicWorksTab({
                   <img
                     src={song.coverImagePath}
                     alt={song.title}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
 

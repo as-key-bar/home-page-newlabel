@@ -14,8 +14,19 @@ export default function DesignWorksTab({ designs, loading }: DesignWorksTabProps
 
   if (loading) {
     return (
-      <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">
-        デザインデータを読み込み中...
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" aria-busy="true">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40 overflow-hidden animate-pulse"
+          >
+            <div className="aspect-square w-full bg-gray-200 dark:bg-gray-700" />
+            <div className="p-4 space-y-2">
+              <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+              <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded" />
+            </div>
+          </div>
+        ))}
       </div>
     )
   }
@@ -42,6 +53,8 @@ export default function DesignWorksTab({ designs, loading }: DesignWorksTabProps
               <img
                 src={design.imagePath}
                 alt={design.title}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement

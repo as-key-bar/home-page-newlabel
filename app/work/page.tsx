@@ -2,7 +2,20 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Song, MovieWork, DesignWork } from '../../lib/firestore'
+import {
+  Song,
+  MovieWork,
+  DesignWork,
+  getVisibleSongs,
+  getMovies,
+  getDesigns,
+  getCachedVisibleSongs,
+  getCachedMovies,
+  getCachedDesigns,
+  setCachedVisibleSongs,
+  setCachedMovies,
+  setCachedDesigns
+} from '../../lib/firestore'
 import SlideMenu from '../../components/SlideMenu'
 import { useAudioPlayer } from '../../hooks/useAudioPlayer'
 import MusicWorksTab from '../../components/work/MusicWorksTab'
@@ -10,13 +23,16 @@ import MovieWorksTab from '../../components/work/MovieWorksTab'
 import DesignWorksTab from '../../components/work/DesignWorksTab'
 import PricingAndFlowSection from '../../components/work/PricingAndFlowSection'
 
+// デザイン実績タブの表示フラグ（将来デザイン実績を追加して公開する際は true に変更）
+const SHOW_DESIGN_TAB = false
+
 export default function WorkPage() {
   const [songs, setSongs] = useState<Song[]>([])
   const [movies, setMovies] = useState<MovieWork[]>([])
   const [designs, setDesigns] = useState<DesignWork[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMovies, setLoadingMovies] = useState(true)
-  const [loadingDesigns, setLoadingDesigns] = useState(true)
+  const [loadingDesigns, setLoadingDesigns] = useState(!SHOW_DESIGN_TAB ? false : true)
   const [activeTab, setActiveTab] = useState<'music' | 'movie' | 'design'>('music')
 
   const {
@@ -32,122 +48,128 @@ export default function WorkPage() {
     toggleMute
   } = useAudioPlayer(0.15)
 
-  // 楽曲データ取得
+  // ページ表示時に全カテゴリの実績・件数を一括並列取得（キャッシュがあれば 0ms で即時反映）
   useEffect(() => {
     let isMounted = true
 
-    const loadWorks = async () => {
+    // 1. キャッシュが存在すれば初回フレームで即座に件数・一覧を反映
+    const cachedSongs = getCachedVisibleSongs()
+    if (cachedSongs && cachedSongs.length > 0) {
+      setSongs(cachedSongs.filter((song) => song.showInPortfolio !== false))
+      setLoading(false)
+    }
+
+    const cachedMovies = getCachedMovies()
+    if (cachedMovies && cachedMovies.length > 0) {
+      setMovies(cachedMovies)
+      setLoadingMovies(false)
+    }
+
+    const cachedDesigns = SHOW_DESIGN_TAB ? getCachedDesigns() : null
+    if (cachedDesigns && cachedDesigns.length > 0) {
+      setDesigns(cachedDesigns)
+      setLoadingDesigns(false)
+    }
+
+    // 2. クライアント Firestore SDK で楽曲・動画（・デザイン）を同時並列取得し、揃った時点で一括反映
+    const fetchSongsData = async (): Promise<Song[]> => {
+      try {
+        const visibleSongs = await getVisibleSongs()
+        if (visibleSongs.length > 0) {
+          return visibleSongs.filter((song) => song.showInPortfolio !== false)
+        }
+      } catch (clientErr) {
+        console.warn('Direct Firestore songs fetch failed, falling back to API:', clientErr)
+      }
+
       try {
         const res = await fetch('/api/songs')
         if (res.ok) {
           const data = await res.json()
-          if (data && Array.isArray(data.songs) && data.songs.length > 0) {
-            const filtered = data.songs.filter(
-              (song: Song) => song.visible !== false && song.showInPortfolio !== false
-            )
-            if (isMounted) {
-              setSongs(filtered)
-              setLoading(false)
-              return
-            }
+          if (data && Array.isArray(data.songs)) {
+            const visible = data.songs.filter((song: Song) => song.visible !== false)
+            setCachedVisibleSongs(visible)
+            return visible.filter((song: Song) => song.showInPortfolio !== false)
           }
         }
-      } catch (err) {
-        console.warn('API fetch songs error, falling back to direct Firestore:', err)
+      } catch (apiErr) {
+        console.error('Fallback API songs fetch failed:', apiErr)
       }
+      return cachedSongs ? cachedSongs.filter((song) => song.showInPortfolio !== false) : []
+    }
 
+    const fetchMoviesData = async (): Promise<MovieWork[]> => {
       try {
-        const { getVisibleSongs } = await import('../../lib/firestore')
-        const visibleSongs = await getVisibleSongs()
-        const portfolioSongs = visibleSongs.filter((song) => song.showInPortfolio !== false)
-        if (isMounted) {
-          setSongs(portfolioSongs)
+        const directMovies = await getMovies()
+        if (directMovies.length > 0) {
+          return directMovies
         }
-      } catch (error) {
-        console.error('Failed to load portfolio songs:', error)
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
+      } catch (clientErr) {
+        console.warn('Direct Firestore movies fetch failed, falling back to API:', clientErr)
       }
-    }
 
-    loadWorks()
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
-  // 動画実績データ取得
-  useEffect(() => {
-    let isMounted = true
-    const loadMovies = async () => {
       try {
         const res = await fetch('/api/movies')
         if (res.ok) {
           const data = await res.json()
           if (data && Array.isArray(data.movies) && data.movies.length > 0) {
-            if (isMounted) setMovies(data.movies)
-            return
+            setCachedMovies(data.movies)
+            return data.movies
           }
         }
-      } catch (err) {
-        console.warn('Failed to load movies from API:', err)
+      } catch (apiErr) {
+        console.warn('Fallback API movies fetch failed:', apiErr)
       }
+      return cachedMovies || []
+    }
 
+    const fetchDesignsData = async (): Promise<DesignWork[]> => {
+      if (!SHOW_DESIGN_TAB) return []
       try {
-        const { getMovies } = await import('../../lib/firestore')
-        const directMovies = await getMovies()
-        if (isMounted && directMovies.length > 0) {
-          setMovies(directMovies)
+        const directDesigns = await getDesigns()
+        if (directDesigns.length > 0) {
+          return directDesigns
         }
-      } catch (err) {
-        console.warn('Failed to load movies from direct Firestore:', err)
-      } finally {
-        if (isMounted) setLoadingMovies(false)
+      } catch (clientErr) {
+        console.warn('Direct Firestore designs fetch failed, falling back to API:', clientErr)
       }
-    }
-    loadMovies()
-    return () => {
-      isMounted = false
-    }
-  }, [])
 
-  // デザイン実績データ取得
-  useEffect(() => {
-    let isMounted = true
-    const loadDesigns = async () => {
       try {
         const res = await fetch('/api/designs')
         if (res.ok) {
           const data = await res.json()
           if (data && Array.isArray(data.designs) && data.designs.length > 0) {
-            if (isMounted) setDesigns(data.designs)
-            return
+            setCachedDesigns(data.designs)
+            return data.designs
           }
         }
-      } catch (err) {
-        console.warn('Failed to load designs from API:', err)
+      } catch (apiErr) {
+        console.warn('Fallback API designs fetch failed:', apiErr)
       }
-
-      try {
-        const { getDesigns } = await import('../../lib/firestore')
-        const directDesigns = await getDesigns()
-        if (isMounted && directDesigns.length > 0) {
-          setDesigns(directDesigns)
-        }
-      } catch (err) {
-        console.warn('Failed to load designs from direct Firestore:', err)
-      } finally {
-        if (isMounted) setLoadingDesigns(false)
-      }
+      return cachedDesigns || []
     }
-    loadDesigns()
+
+    Promise.all([fetchSongsData(), fetchMoviesData(), fetchDesignsData()]).then(
+      ([fetchedSongs, fetchedMovies, fetchedDesigns]) => {
+        if (!isMounted) return
+        setSongs(fetchedSongs)
+        setMovies(fetchedMovies)
+        if (SHOW_DESIGN_TAB) {
+          setDesigns(fetchedDesigns)
+        }
+        setLoading(false)
+        setLoadingMovies(false)
+        setLoadingDesigns(false)
+      }
+    )
+
     return () => {
       isMounted = false
     }
   }, [])
+
+  const visibleMovieCount = movies.filter((m) => m.visible !== false).length
+  const visibleDesignCount = designs.filter((d) => d.visible !== false).length
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -178,7 +200,9 @@ export default function WorkPage() {
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">制作実績</h2>
             <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-              これまでに制作・提供した楽曲、動画、デザインなどの制作実績です。
+              {SHOW_DESIGN_TAB
+                ? 'これまでに制作・提供した楽曲、動画、デザインなどの制作実績です。'
+                : 'これまでに制作・提供した楽曲、動画などの制作実績です。'}
             </p>
           </div>
 
@@ -194,8 +218,8 @@ export default function WorkPage() {
               }`}
             >
               <span>楽曲試聴</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono">
-                {songs.length}
+              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono min-w-[1.5rem] text-center">
+                {loading && songs.length === 0 ? '…' : songs.length}
               </span>
             </button>
 
@@ -209,25 +233,27 @@ export default function WorkPage() {
               }`}
             >
               <span>動画実績</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono">
-                {movies.filter((m) => m.visible !== false).length}
+              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono min-w-[1.5rem] text-center">
+                {loadingMovies && visibleMovieCount === 0 ? '…' : visibleMovieCount}
               </span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('design')}
-              className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${
-                activeTab === 'design'
-                  ? 'border-black dark:border-white text-gray-900 dark:text-white'
-                  : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
-              }`}
-            >
-              <span>デザイン実績</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono">
-                {designs.filter((d) => d.visible !== false).length}
-              </span>
-            </button>
+            {SHOW_DESIGN_TAB && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('design')}
+                className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                  activeTab === 'design'
+                    ? 'border-black dark:border-white text-gray-900 dark:text-white'
+                    : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
+              >
+                <span>デザイン実績</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono min-w-[1.5rem] text-center">
+                  {loadingDesigns && visibleDesignCount === 0 ? '…' : visibleDesignCount}
+                </span>
+              </button>
+            )}
           </div>
 
           {activeTab === 'music' && (
@@ -249,7 +275,9 @@ export default function WorkPage() {
 
           {activeTab === 'movie' && <MovieWorksTab movies={movies} loading={loadingMovies} />}
 
-          {activeTab === 'design' && <DesignWorksTab designs={designs} loading={loadingDesigns} />}
+          {SHOW_DESIGN_TAB && activeTab === 'design' && (
+            <DesignWorksTab designs={designs} loading={loadingDesigns} />
+          )}
         </section>
 
         {/* 料金表・制作の流れ・外部リンク・お問い合わせCTA */}
