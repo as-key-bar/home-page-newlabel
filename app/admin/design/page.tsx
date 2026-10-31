@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react'
 import AuthGuard from '../../../components/AuthGuard'
 import AdminNav from '../../../components/AdminNav'
+import ReorderButtons from '../../../components/admin/ReorderButtons'
 import { useAuth } from '../../../contexts/AuthContext'
 import { DesignWork } from '../../../lib/firestore'
-import { storage } from '../../../lib/firebase'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { ReorderAction, uploadFileToStorage } from '../../../lib/admin-utils'
 
 export default function DesignAdminPage() {
-  const { user } = useAuth()
+  const { authFetch } = useAuth()
   const [designs, setDesigns] = useState<DesignWork[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -24,18 +24,6 @@ export default function DesignAdminPage() {
     description: '',
     visible: 'true'
   })
-
-  // 管理API用: Firebase IDトークンを Authorization ヘッダーに付与
-  const authFetch = async (url: string, init: RequestInit = {}) => {
-    const token = await user?.getIdToken(true)
-    return fetch(url, {
-      ...init,
-      headers: {
-        ...(init.headers as Record<string, string> | undefined),
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      }
-    })
-  }
 
   // デザイン一覧を取得
   const fetchDesigns = async () => {
@@ -105,16 +93,11 @@ export default function DesignAdminPage() {
         throw new Error('画像ファイル（PNG, JPEG, WebP等）を選択してください')
       }
 
-      if (file.size > 10 * 1024 * 1024) {
-        throw new Error('ファイルサイズは10MB以下にしてください')
-      }
-
-      const timestamp = Date.now()
-      const safeName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-      const storageRef = ref(storage, `images/designs/${safeName}`)
-
-      const uploadResult = await uploadBytes(storageRef, file)
-      const downloadURL = await getDownloadURL(uploadResult.ref)
+      const downloadURL = await uploadFileToStorage({
+        file,
+        folder: 'images/designs',
+        maxSizeBytes: 10 * 1024 * 1024
+      })
 
       setFormData(prev => ({ ...prev, imagePath: downloadURL }))
       setSuccessMessage('画像が正常にアップロードされました')
@@ -286,7 +269,7 @@ export default function DesignAdminPage() {
   }
 
   // 表示順変更
-  const handleReorder = async (id: string, action: 'up' | 'down' | 'top' | 'bottom') => {
+  const handleReorder = async (id: string, action: ReorderAction) => {
     clearMessages()
     try {
       const res = await authFetch('/api/designs/reorder', {
@@ -533,36 +516,7 @@ export default function DesignAdminPage() {
                       {/* 操作ボタン */}
                       <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto justify-end sm:justify-start">
                         {/* 並び順 */}
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => handleReorder(design.id, 'top')}
-                            className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
-                            title="最上位へ"
-                          >
-                            ↑↑
-                          </button>
-                          <button
-                            onClick={() => handleReorder(design.id, 'up')}
-                            className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
-                            title="1つ上へ"
-                          >
-                            ↑
-                          </button>
-                          <button
-                            onClick={() => handleReorder(design.id, 'down')}
-                            className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
-                            title="1つ下へ"
-                          >
-                            ↓
-                          </button>
-                          <button
-                            onClick={() => handleReorder(design.id, 'bottom')}
-                            className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
-                            title="最下位へ"
-                          >
-                            ↓↓
-                          </button>
-                        </div>
+                        <ReorderButtons id={design.id} onReorder={handleReorder} />
 
                         {/* 編集・削除 */}
                         <div className="flex gap-2">

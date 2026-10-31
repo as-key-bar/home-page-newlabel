@@ -4,25 +4,14 @@ import { useState, useEffect } from 'react'
 import { Song } from '../../api/songs/route'
 import AuthGuard from '../../../components/AuthGuard'
 import AdminNav from '../../../components/AdminNav'
+import ReorderButtons from '../../../components/admin/ReorderButtons'
 import { useAuth } from '../../../contexts/AuthContext'
-import { storage } from '../../../lib/firebase'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { ReorderAction, uploadFileToStorage } from '../../../lib/admin-utils'
 
 export default function SongsAdmin() {
-  const { user, logout } = useAuth()
-
-  // 管理API用: Firebase IDトークンを Authorization ヘッダーに付与する（最新の有効なトークンを取得）
-  const authFetch = async (url: string, init: RequestInit = {}) => {
-    const token = await user?.getIdToken(true)
-    return fetch(url, {
-      ...init,
-      headers: {
-        ...(init.headers as Record<string, string> | undefined),
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      }
-    })
-  }
+  const { user, authFetch } = useAuth()
   const [songs, setSongs] = useState<Song[]>([])
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
@@ -250,11 +239,7 @@ export default function SongsAdmin() {
     clearMessages()
     
     // 削除中は楽曲を視覚的に無効化
-    setSongs(prevSongs => 
-      prevSongs.map(song => 
-        song.id === id ? { ...song, _deleting: true } : song
-      )
-    )
+    setDeletingIds(prev => new Set(prev).add(id))
     
     try {
       const response = await authFetch(`/api/songs?id=${id}`, {
@@ -278,14 +263,14 @@ export default function SongsAdmin() {
         setSuccessMessage('楽曲が正常に削除されました')
       } catch (clientErr) {
         console.error('Direct Firestore deleteSongClient also failed:', clientErr)
-        // エラー時は_deletingフラグを削除
-        setSongs(prevSongs => 
-          prevSongs.map(song => 
-            song.id === id ? { ...song, _deleting: false } : song
-          )
-        )
         setError(err instanceof Error ? err.message : '楽曲の削除に失敗しました')
       }
+    } finally {
+      setDeletingIds(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
   }
 
@@ -362,7 +347,7 @@ export default function SongsAdmin() {
   }
 
   // 表示順変更
-  const handleReorder = async (songId: string, action: 'up' | 'down' | 'top' | 'bottom') => {
+  const handleReorder = async (songId: string, action: ReorderAction) => {
     clearMessages()
     
     try {
@@ -409,44 +394,21 @@ export default function SongsAdmin() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // ファイルサイズチェック
-    const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
-    if (file.size > MAX_IMAGE_SIZE) {
-      setError('画像ファイルサイズが大きすぎます（最大5MB）')
-      return
-    }
-
-    // ファイル形式チェック
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
-    if (!allowedTypes.includes(file.type)) {
-      setError('対応していない画像形式です（JPEG, PNG, GIF, WebPのみ）')
-      return
-    }
-
     setUploadingImage(true)
     clearMessages()
 
     try {
-      // Firebase認証状態を確認
       if (!user) {
         throw new Error('認証が必要です')
       }
 
-      // ファイル名を安全な形式に変換
-      const timestamp = Date.now()
-      const safeName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-      
-      console.log(`🔥 Firebase Storageアップロード開始: images/covers/${safeName}`)
-      
-      // Firebase Storageにアップロード
-      const storageRef = ref(storage, `images/covers/${safeName}`)
-      const uploadResult = await uploadBytes(storageRef, file)
-      
-      console.log(`📤 アップロード完了、URL取得中...`)
-      const downloadURL = await getDownloadURL(uploadResult.ref)
-      
-      console.log(`✅ ダウンロードURL取得完了: ${downloadURL}`)
-      
+      const downloadURL = await uploadFileToStorage({
+        file,
+        folder: 'images/covers',
+        maxSizeBytes: 5 * 1024 * 1024,
+        allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+      })
+
       setFormData(prev => ({ ...prev, coverImagePath: downloadURL }))
       setSuccessMessage('画像が正常にアップロードされました')
     } catch (err) {
@@ -458,7 +420,6 @@ export default function SongsAdmin() {
       }
     } finally {
       setUploadingImage(false)
-      // ファイル入力をリセット
       e.target.value = ''
     }
   }
@@ -468,50 +429,27 @@ export default function SongsAdmin() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // ファイルサイズチェック
-    const MAX_AUDIO_SIZE = 50 * 1024 * 1024 // 50MB
-    if (file.size > MAX_AUDIO_SIZE) {
-      setError('音声ファイルサイズが大きすぎます（最大50MB）')
-      return
-    }
-
-    // ファイル形式チェック
-    const allowedTypes = [
-      'audio/wav', 'audio/wave', 'audio/x-wav',
-      'audio/mp3', 'audio/mpeg',
-      'audio/flac', 'audio/x-flac',
-      'audio/aac', 'audio/mp4',
-      'audio/ogg', 'audio/vorbis'
-    ]
-    if (!allowedTypes.includes(file.type)) {
-      setError('対応していない音声形式です（WAV, MP3, FLAC, AAC, OGGのみ）')
-      return
-    }
-
     setUploadingAudio(true)
     clearMessages()
 
     try {
-      // Firebase認証状態を確認
       if (!user) {
         throw new Error('認証が必要です')
       }
 
-      // ファイル名を安全な形式に変換
-      const timestamp = Date.now()
-      const safeName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-      
-      console.log(`🔥 Firebase Storageアップロード開始: audio/${safeName}`)
-      
-      // Firebase Storageにアップロード
-      const storageRef = ref(storage, `audio/${safeName}`)
-      const uploadResult = await uploadBytes(storageRef, file)
-      
-      console.log(`📤 アップロード完了、URL取得中...`)
-      const downloadURL = await getDownloadURL(uploadResult.ref)
-      
-      console.log(`✅ ダウンロードURL取得完了: ${downloadURL}`)
-      
+      const downloadURL = await uploadFileToStorage({
+        file,
+        folder: 'audio',
+        maxSizeBytes: 50 * 1024 * 1024,
+        allowedMimeTypes: [
+          'audio/wav', 'audio/wave', 'audio/x-wav',
+          'audio/mp3', 'audio/mpeg',
+          'audio/flac', 'audio/x-flac',
+          'audio/aac', 'audio/mp4',
+          'audio/ogg', 'audio/vorbis'
+        ]
+      })
+
       setFormData(prev => ({ ...prev, audioPath: downloadURL }))
       setSuccessMessage('音声ファイルが正常にアップロードされました')
     } catch (err) {
@@ -523,7 +461,6 @@ export default function SongsAdmin() {
       }
     } finally {
       setUploadingAudio(false)
-      // ファイル入力をリセット
       e.target.value = ''
     }
   }
@@ -837,9 +774,11 @@ export default function SongsAdmin() {
             <div className="text-gray-400 text-center py-8">楽曲が登録されていません</div>
           ) : (
             <div className="grid gap-4">
-              {songs.map((song) => (
+              {songs.map((song) => {
+                const isDeleting = deletingIds.has(song.id)
+                return (
                 <div key={song.id} className={`p-4 bg-gray-900 rounded-lg transition-all duration-200 ${
-                  (song as any)._deleting ? 'opacity-50 pointer-events-none bg-red-900' : ''
+                  isDeleting ? 'opacity-50 pointer-events-none bg-red-900' : ''
                 }`}>
                   <div className="flex justify-between items-start">
                     <div className="flex gap-4 flex-1">
@@ -918,36 +857,7 @@ export default function SongsAdmin() {
                     
                     <div className="flex flex-col gap-2 ml-4">
                       {/* 表示順操作ボタン */}
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => handleReorder(song.id, 'top')}
-                          className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
-                          title="最上位に移動"
-                        >
-                          ↑↑
-                        </button>
-                        <button
-                          onClick={() => handleReorder(song.id, 'up')}
-                          className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
-                          title="上に移動"
-                        >
-                          ↑
-                        </button>
-                        <button
-                          onClick={() => handleReorder(song.id, 'down')}
-                          className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
-                          title="下に移動"
-                        >
-                          ↓
-                        </button>
-                        <button
-                          onClick={() => handleReorder(song.id, 'bottom')}
-                          className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
-                          title="最下位に移動"
-                        >
-                          ↓↓
-                        </button>
-                      </div>
+                      <ReorderButtons id={song.id} onReorder={handleReorder} />
                       
                       {/* 基本操作ボタン */}
                       <div className="flex gap-2">
@@ -965,20 +875,20 @@ export default function SongsAdmin() {
                         </button>
                         <button
                           onClick={() => handleDelete(song.id)}
-                          disabled={(song as any)._deleting}
+                          disabled={isDeleting}
                           className={`px-3 py-1 text-sm rounded transition-colors ${
-                            (song as any)._deleting 
+                            isDeleting 
                               ? 'bg-gray-600 cursor-not-allowed' 
                               : 'bg-red-600 hover:bg-red-700'
                           }`}
                         >
-                          {(song as any)._deleting ? '削除中...' : '削除'}
+                          {isDeleting ? '削除中...' : '削除'}
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>

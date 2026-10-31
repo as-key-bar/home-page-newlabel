@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react'
 import AuthGuard from '../../../components/AuthGuard'
 import AdminNav from '../../../components/AdminNav'
+import ReorderButtons from '../../../components/admin/ReorderButtons'
 import { useAuth } from '../../../contexts/AuthContext'
 import { MovieWork } from '../../../lib/firestore'
+import { ReorderAction } from '../../../lib/admin-utils'
 import { getYoutubeEmbedUrl } from '../../../lib/youtube'
 
 export default function MovieAdminPage() {
-  const { user } = useAuth()
+  const { authFetch } = useAuth()
   const [movies, setMovies] = useState<MovieWork[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -22,18 +24,6 @@ export default function MovieAdminPage() {
     description: '',
     visible: 'true'
   })
-
-  // 管理API用: Firebase IDトークンを Authorization ヘッダーに付与
-  const authFetch = async (url: string, init: RequestInit = {}) => {
-    const token = await user?.getIdToken(true)
-    return fetch(url, {
-      ...init,
-      headers: {
-        ...(init.headers as Record<string, string> | undefined),
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      }
-    })
-  }
 
   // 動画一覧を取得
   const fetchMovies = async () => {
@@ -250,7 +240,7 @@ export default function MovieAdminPage() {
   }
 
   // 表示順変更
-  const handleReorder = async (id: string, action: 'up' | 'down' | 'top' | 'bottom') => {
+  const handleReorder = async (id: string, action: ReorderAction) => {
     clearMessages()
     try {
       const res = await authFetch('/api/movies/reorder', {
@@ -487,36 +477,7 @@ export default function MovieAdminPage() {
                         {/* 操作ボタン */}
                         <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto justify-end sm:justify-start">
                           {/* 並び順 */}
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => handleReorder(movie.id, 'top')}
-                              className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
-                              title="最上位へ"
-                            >
-                              ↑↑
-                            </button>
-                            <button
-                              onClick={() => handleReorder(movie.id, 'up')}
-                              className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
-                              title="1つ上へ"
-                            >
-                              ↑
-                            </button>
-                            <button
-                              onClick={() => handleReorder(movie.id, 'down')}
-                              className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
-                              title="1つ下へ"
-                            >
-                              ↓
-                            </button>
-                            <button
-                              onClick={() => handleReorder(movie.id, 'bottom')}
-                              className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-xs rounded transition-colors"
-                              title="最下位へ"
-                            >
-                              ↓↓
-                            </button>
-                          </div>
+                          <ReorderButtons id={movie.id} onReorder={handleReorder} />
 
                           {/* 編集・削除 */}
                           <div className="flex gap-2">

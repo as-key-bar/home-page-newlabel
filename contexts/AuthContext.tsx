@@ -16,6 +16,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>
   logout: () => Promise<void>
   isAdmin: boolean
+  authFetch: (url: string, init?: RequestInit) => Promise<Response>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -48,8 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await signInWithPopup(auth, provider)
     } catch (error) {
       console.error('Sign in error:', error)
-      console.error('Error code:', (error as any).code)
-      console.error('Error message:', (error as any).message)
+      if (error && typeof error === 'object') {
+        if ('code' in error) console.error('Error code:', error.code)
+        if ('message' in error) console.error('Error message:', error.message)
+      }
       throw error
     }
   }
@@ -63,12 +66,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const authFetch = async (url: string, init: RequestInit = {}) => {
+    const token = await user?.getIdToken(true)
+    return fetch(url, {
+      ...init,
+      headers: {
+        ...(init.headers as Record<string, string> | undefined),
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    })
+  }
+
   const value = {
     user,
     loading,
     signInWithGoogle,
     logout,
-    isAdmin
+    isAdmin,
+    authFetch
   }
 
   return (
