@@ -7,6 +7,7 @@ import AdminNav from '../../../components/AdminNav'
 import ReorderButtons from '../../../components/admin/ReorderButtons'
 import { useAuth } from '../../../contexts/AuthContext'
 import { ReorderAction, uploadFileToStorage } from '../../../lib/admin-utils'
+import { invalidateWorksCache } from '../../../lib/firestore'
 
 export default function SongsAdmin() {
   const { user, authFetch } = useAuth()
@@ -95,6 +96,7 @@ export default function SongsAdmin() {
   const clearMessages = () => {
     setError('')
     setSuccessMessage('')
+    invalidateWorksCache()
   }
 
   // 新規追加

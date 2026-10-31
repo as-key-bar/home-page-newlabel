@@ -13,7 +13,13 @@ export default function SlideMenu({ volume = 0.1, onVolumeChange, isLoading = fa
   const [isOpen, setIsOpen] = useState(false)
 
   const toggleMenu = () => {
-    setIsOpen(!isOpen)
+    const nextOpen = !isOpen
+    setIsOpen(nextOpen)
+    if (nextOpen) {
+      import('../lib/firestore')
+        .then(({ prefetchWorksData }) => prefetchWorksData())
+        .catch(() => {})
+    }
   }
 
   const closeMenu = () => {
@@ -138,6 +144,11 @@ export default function SlideMenu({ volume = 0.1, onVolumeChange, isLoading = fa
             <Link
               href="/work"
               onClick={closeMenu}
+              onMouseEnter={() => {
+                import('../lib/firestore')
+                  .then(({ prefetchWorksData }) => prefetchWorksData())
+                  .catch(() => {})
+              }}
               className="block text-xl font-medium text-black hover:text-gray-600 transition-colors"
             >
               Works & About

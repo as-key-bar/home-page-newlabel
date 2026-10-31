@@ -10,11 +10,14 @@ import { getFirestore } from 'firebase-admin/firestore'
  *  2. GOOGLE_APPLICATION_CREDENTIALS 等の Application Default Credentials
  *
  * ID トークン検証のみなら projectId だけで動作するが、
- * Firestore への書き込みには上記いずれかの認証情報が必要。
+ * Firestore への読み書きには上記いずれかの認証情報が必要。
  */
 function parseServiceAccountKey(rawKey: string) {
   let trimmed = rawKey.trim()
-  if ((trimmed.startsWith("'") && trimmed.endsWith("'")) || (trimmed.startsWith('"') && trimmed.endsWith('"'))) {
+  if (
+    (trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+    (trimmed.startsWith('"') && trimmed.endsWith('"'))
+  ) {
     trimmed = trimmed.slice(1, -1)
   }
   const parsed = JSON.parse(trimmed)
@@ -22,6 +25,12 @@ function parseServiceAccountKey(rawKey: string) {
     parsed.private_key = parsed.private_key.replace(/\\n/g, '\n')
   }
   return parsed
+}
+
+export function hasAdminCredentials(): boolean {
+  return Boolean(
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_APPLICATION_CREDENTIALS
+  )
 }
 
 function getAdminApp(): App {
@@ -43,7 +52,10 @@ function getAdminApp(): App {
       return initializeApp({ projectId })
     }
   }
-  return initializeApp({ credential: applicationDefault(), projectId })
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    return initializeApp({ credential: applicationDefault(), projectId })
+  }
+  return initializeApp({ projectId })
 }
 
 export function getAdminAuth() {
@@ -51,6 +63,8 @@ export function getAdminAuth() {
 }
 
 export function getAdminDb() {
+  if (!hasAdminCredentials()) {
+    throw new Error('Firebase Admin credentials are not configured')
+  }
   return getFirestore(getAdminApp())
 }
-

@@ -5,7 +5,7 @@ import AuthGuard from '../../../components/AuthGuard'
 import AdminNav from '../../../components/AdminNav'
 import ReorderButtons from '../../../components/admin/ReorderButtons'
 import { useAuth } from '../../../contexts/AuthContext'
-import { DesignWork } from '../../../lib/firestore'
+import { DesignWork, invalidateWorksCache } from '../../../lib/firestore'
 import { ReorderAction, uploadFileToStorage } from '../../../lib/admin-utils'
 
 export default function DesignAdminPage() {
@@ -73,6 +73,7 @@ export default function DesignAdminPage() {
   const clearMessages = () => {
     setError('')
     setSuccessMessage('')
+    invalidateWorksCache()
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

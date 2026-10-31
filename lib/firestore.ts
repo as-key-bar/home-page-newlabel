@@ -12,6 +12,7 @@ import {
   where
 } from 'firebase/firestore'
 import { moveItemByAction, ReorderAction } from './admin-utils'
+import { defaultMovies, defaultDesigns } from './fallback-data'
 
 export interface Song {
   id: string
@@ -87,6 +88,159 @@ export interface Profile {
 }
 
 // ==========================================
+// クライアント側キャッシュ（メモリ + localStorage/sessionStorage）
+// ページ遷移時（/ -> /work 等）や再訪問時の待ち時間を0msにするためのSWRキャッシュ層
+// ==========================================
+
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5分
+const STORAGE_KEYS = {
+  visibleSongs: 'newlabel_cache_visible_songs_v2',
+  movies: 'newlabel_cache_movies_v2',
+  designs: 'newlabel_cache_designs_v2'
+} as const
+
+interface CacheEntry<T> {
+  data: T
+  timestamp: number
+}
+
+const memoryCache: {
+  visibleSongs?: CacheEntry<Song[]>
+  movies?: CacheEntry<MovieWork[]>
+  designs?: CacheEntry<DesignWork[]>
+} = {}
+
+let prefetchPromise: Promise<void> | null = null
+
+function readCache<T>(
+  memEntry: CacheEntry<T> | undefined,
+  storageKey: string
+): { data: T; isFresh: boolean } | null {
+  const now = Date.now()
+  if (memEntry) {
+    return {
+      data: memEntry.data,
+      isFresh: now - memEntry.timestamp < CACHE_TTL_MS
+    }
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey)
+      if (raw) {
+        const parsed = JSON.parse(raw) as CacheEntry<T>
+        if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0) {
+          return {
+            data: parsed.data,
+            isFresh: now - (parsed.timestamp || 0) < CACHE_TTL_MS
+          }
+        }
+      }
+    } catch {
+      // ストレージ読み取り失敗時は無視
+    }
+  }
+  return null
+}
+
+function writeCache<T>(
+  key: 'visibleSongs' | 'movies' | 'designs',
+  storageKey: string,
+  data: T
+): void {
+  if (Array.isArray(data) && data.length === 0) return
+  const entry: CacheEntry<T> = { data, timestamp: Date.now() }
+  ;(memoryCache as Record<string, unknown>)[key] = entry
+  if (typeof window !== 'undefined') {
+    try {
+      const serialized = JSON.stringify(entry)
+      sessionStorage.setItem(storageKey, serialized)
+      localStorage.setItem(storageKey, serialized)
+    } catch {
+      // ストレージ容量超過等は無視
+    }
+  }
+}
+
+export function getCachedVisibleSongs(): Song[] | null {
+  const hit = readCache(memoryCache.visibleSongs, STORAGE_KEYS.visibleSongs)
+  if (hit && !memoryCache.visibleSongs) {
+    memoryCache.visibleSongs = { data: hit.data, timestamp: Date.now() }
+  }
+  return hit ? hit.data : null
+}
+
+export function setCachedVisibleSongs(songs: Song[]): void {
+  writeCache('visibleSongs', STORAGE_KEYS.visibleSongs, songs)
+}
+
+export function getCachedMovies(): MovieWork[] | null {
+  const hit = readCache(memoryCache.movies, STORAGE_KEYS.movies)
+  if (hit && !memoryCache.movies) {
+    memoryCache.movies = { data: hit.data, timestamp: Date.now() }
+  }
+  return hit ? hit.data : null
+}
+
+export function setCachedMovies(movies: MovieWork[]): void {
+  writeCache('movies', STORAGE_KEYS.movies, movies)
+}
+
+export function getCachedDesigns(): DesignWork[] | null {
+  const hit = readCache(memoryCache.designs, STORAGE_KEYS.designs)
+  if (hit && !memoryCache.designs) {
+    memoryCache.designs = { data: hit.data, timestamp: Date.now() }
+  }
+  return hit ? hit.data : null
+}
+
+export function setCachedDesigns(designs: DesignWork[]): void {
+  writeCache('designs', STORAGE_KEYS.designs, designs)
+}
+
+/**
+ * 管理画面での追加・更新・削除・並び替え時にキャッシュを破棄する
+ */
+export function invalidateWorksCache(): void {
+  delete memoryCache.visibleSongs
+  delete memoryCache.movies
+  delete memoryCache.designs
+  prefetchPromise = null
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.removeItem(STORAGE_KEYS.visibleSongs)
+      sessionStorage.removeItem(STORAGE_KEYS.movies)
+      sessionStorage.removeItem(STORAGE_KEYS.designs)
+      localStorage.removeItem(STORAGE_KEYS.visibleSongs)
+      localStorage.removeItem(STORAGE_KEYS.movies)
+      localStorage.removeItem(STORAGE_KEYS.designs)
+    } catch {
+      // ignore
+    }
+  }
+}
+
+/**
+ * /work ページ表示に必要なデータをバックグラウンドでプリフェッチする
+ */
+export function prefetchWorksData(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve()
+  if (prefetchPromise) return prefetchPromise
+
+  prefetchPromise = Promise.allSettled([
+    readCache(memoryCache.visibleSongs, STORAGE_KEYS.visibleSongs)?.isFresh
+      ? Promise.resolve()
+      : getVisibleSongs(),
+    readCache(memoryCache.movies, STORAGE_KEYS.movies)?.isFresh
+      ? Promise.resolve()
+      : getMovies()
+  ]).then(() => {
+    prefetchPromise = null
+  })
+
+  return prefetchPromise
+}
+
+// ==========================================
 // 順序付きコレクション共通ヘルパー（クライアント Firestore SDK）
 // ==========================================
 
@@ -135,6 +289,7 @@ async function addOrderedDocClient<T extends OrderedItem>(
   }
   batch.set(doc(db, collectionName, newId), newDoc)
   await batch.commit()
+  invalidateWorksCache()
 
   return { ...itemData, id: newId, order: 1 } as T
 }
@@ -151,6 +306,7 @@ async function updateOrderedDocClient<T extends OrderedItem>(
     ...rest,
     updatedAt: serverTimestamp()
   })
+  invalidateWorksCache()
 }
 
 async function deleteOrderedDocClient<T extends OrderedItem>(
@@ -178,6 +334,7 @@ async function deleteOrderedDocClient<T extends OrderedItem>(
     }
   }
   await batch.commit()
+  invalidateWorksCache()
 }
 
 async function reorderOrderedDocByActionClient<T extends OrderedItem>(
@@ -201,6 +358,7 @@ async function reorderOrderedDocByActionClient<T extends OrderedItem>(
       })
     })
     await batch.commit()
+    invalidateWorksCache()
   }
 }
 
@@ -218,7 +376,7 @@ export async function getSongs(): Promise<Song[]> {
   }
 }
 
-// 公開楽曲のみ取得
+// 公開楽曲のみ取得（キャッシュ書き込み付き）
 export async function getVisibleSongs(): Promise<Song[]> {
   try {
     const songsRef = collection(db, 'songs')
@@ -236,7 +394,9 @@ export async function getVisibleSongs(): Promise<Song[]> {
       }
     }) as Song[]
 
-    return songs.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999))
+    const sorted = songs.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999))
+    writeCache('visibleSongs', STORAGE_KEYS.visibleSongs, sorted)
+    return sorted
   } catch (error) {
     console.error('公開楽曲データ取得エラー:', error)
     throw new Error('公開楽曲データの取得に失敗しました')
@@ -332,10 +492,13 @@ export async function getProfile(): Promise<Profile | null> {
 
 export async function getMovies(): Promise<MovieWork[]> {
   try {
-    return await getOrderedCollectionClient<MovieWork>('movies')
+    const movies = await getOrderedCollectionClient<MovieWork>('movies')
+    const result = movies.length > 0 ? movies : defaultMovies
+    writeCache('movies', STORAGE_KEYS.movies, result)
+    return result
   } catch (error) {
     console.warn('動画実績データ取得失敗:', error)
-    return []
+    return defaultMovies
   }
 }
 
@@ -363,10 +526,13 @@ export async function reorderMovieByActionClient(id: string, action: ReorderActi
 
 export async function getDesigns(): Promise<DesignWork[]> {
   try {
-    return await getOrderedCollectionClient<DesignWork>('designs')
+    const designs = await getOrderedCollectionClient<DesignWork>('designs')
+    const result = designs.length > 0 ? designs : defaultDesigns
+    writeCache('designs', STORAGE_KEYS.designs, result)
+    return result
   } catch (error) {
     console.warn('デザイン実績データ取得失敗:', error)
-    return []
+    return defaultDesigns
   }
 }
 

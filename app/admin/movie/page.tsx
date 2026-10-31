@@ -5,7 +5,7 @@ import AuthGuard from '../../../components/AuthGuard'
 import AdminNav from '../../../components/AdminNav'
 import ReorderButtons from '../../../components/admin/ReorderButtons'
 import { useAuth } from '../../../contexts/AuthContext'
-import { MovieWork } from '../../../lib/firestore'
+import { MovieWork, invalidateWorksCache } from '../../../lib/firestore'
 import { ReorderAction } from '../../../lib/admin-utils'
 import { getYoutubeEmbedUrl } from '../../../lib/youtube'
 
@@ -73,6 +73,7 @@ export default function MovieAdminPage() {
   const clearMessages = () => {
     setError('')
     setSuccessMessage('')
+    invalidateWorksCache()
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
